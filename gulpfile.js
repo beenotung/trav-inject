@@ -14,6 +14,12 @@ const
   , merge = require('merge2')
   ;
 
+const paths = {
+  sass: ['src/**/*.scss']
+  , script: ['src/**/*.ts', 'src/**/*.js']
+  , dist: ['dist/*']
+};
+
 // const watchify = require('watchify');
 // const browserify = require('gulp-browserify');
 // var source = require('vinyl-source-stream');
@@ -54,7 +60,7 @@ const
 // gulp.task('default', ['watch']);
 
 gulp.task('test', ()=> {
-  return gulp.src('src/**/*.js')
+  return gulp.src(paths.script)
     .pipe(browserify({
       insertGlobals: true
       , debug: !gulp.env.production
@@ -95,7 +101,7 @@ gulp.task('typescript', ()=> {
 });
 
 gulp.task('build', ()=> {
-  return gulp.src('src/**/*.?s')
+  return gulp.src(paths.script)
     .pipe(filesize()) // raw files
     .pipe(sourcemaps.init())
     .pipe(ts({
@@ -107,9 +113,9 @@ gulp.task('build', ()=> {
     .pipe(babel({
       presets: ['es2015']
       , plugins: [
-        'transform-runtime'
+        // 'transform-runtime'
         // , 'babel-plugin-transform-es2015-modules-amd'
-        , 'babel-plugin-transform-es2015-modules-umd'
+        // , 'babel-plugin-transform-es2015-modules-umd'
         // , 'babel-plugin-transform-es2015-modules-commonjs'
       ]
     }))
@@ -123,15 +129,19 @@ gulp.task('build', ()=> {
     .pipe(gulp.dest('dist'));
 });
 
+gulp.task('watch', ()=> {
+  gulp.watch(paths.script, ['build']);
+});
+
 gulp.task('clean', ()=> {
-  return gulp.src('dist/*', {read: false})
+  return gulp.src(paths.dist, {read: false})
     .pipe(filesize())
     .pipe(clean());
 });
 
 /* this is for library, not for web app project*/
 gulp.task('typescript-library', ()=> {
-  const tsResult = gulp.src('src/**/*.ts')
+  const tsResult = gulp.src(paths.script)
     .pipe(ts({
       declaration: true,
       noExternalResolve: true
@@ -141,3 +151,5 @@ gulp.task('typescript-library', ()=> {
     , tsResult.js.pipe(gulp.dest('dist/js'))
   ]);
 });
+
+gulp.task('default', ['build', 'watch']);
