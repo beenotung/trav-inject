@@ -5,7 +5,14 @@
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "bower install"
+    "install": "bower install",
+    "prebuild": "npm run install",
+    "build": "gulp build",
+    "watch": "gulp watch",
+    "prestart": "npm run build; npm run watch&",
+    "start": "http-server",
+    "preclean": "npm install",
+    "clean": "gulp clean"
   },
   "keywords": [
     "typescript",
@@ -23,7 +30,6 @@
   "devDependencies": {
     "babel": "^6.5.2",
     "babel-preset-es2015": "^6.9.0",
-    "bower": "^1.7.9",
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
     "gulp-clean": "^0.3.2",
@@ -33,5 +39,14 @@
     "gulp-typescript": "^2.13.6",
     "http-server": "^0.9.0",
     "merge2": "^1.0.2"
-  }
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beenotung/webdemo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/beenotung/webdemo/issues"
+  },
+  "homepage": "https://github.com/beenotung/webdemo#readme"
 }

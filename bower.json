@@ -1,0 +1,33 @@
+{
+  "name": "webdemo",
+  "description": "demo on typescript + babel",
+  "main": "src/index.js",
+  "authors": [
+    "Beeno Tung"
+  ],
+  "license": "ISC",
+  "keywords": [
+    "typescript",
+    "tsc",
+    "babel",
+    "babeljs",
+    "es2015",
+    "es6",
+    "es5",
+    "es3",
+    "demo"
+  ],
+  "homepage": "https://github.com/beenotung/webdemo",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "dist/lib",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "babel-polyfill": "^0.0.1"
+  }
+}
