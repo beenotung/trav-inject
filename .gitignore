@@ -1,0 +1,9 @@
+# npm
+node_modules/
+
+# IDE
+.idea/
+webdemo.iml
+
+# project
+dist/
