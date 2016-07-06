@@ -1,4 +1,4 @@
-# webdome
+# webdemo
 demo on typescript + babel
 
 ## script
