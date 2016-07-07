@@ -30,44 +30,62 @@ declare type Response={
   blob():any;
 };
 
-declare function fetch(url:string):Promise<Response>;
+declare function fetch(url:string, option:any):Promise<Response>;
 
-type NOOP=()=> {};
+type NOOP=()=> void;
 
 module require {
-  const cache = new Map<string,number>();
-  const downloading = 1;
-  const downloaded = 2;
-  const pending = new Map<string,NOOP[]>();
+  type PendingCallback=[NOOP,NOOP];
+  const pending = new Map<string,PendingCallback[]>();
+  const cached = new Set<string>();
 
-  export function load(url:string) {
-    return new Promise((resolve:NOOP, reject)=> {
-      if (cache.has(url)) {
-        console.debug('cached', url);
-        if (cache.get(url) == downloaded) {
-          resolve();
+  async function runSource(url:string, cors:boolean) {
+    let option = {
+      mode: cors ? 'cors' : 'no-cors'
+    };
+    let response = await fetch(url, option);
+    let text = await response.text();
+    if (text.length == 0) {
+      throw new Error('empty file')
+    } else {
+      eval(text);
+      return
+    }
+  }
+
+  async function injectSource(url:string) {
+    return new Promise((resolve, reject)=> {
+      let script = document.createElement('script');
+      script.onload = resolve;
+      script.onerror = reject;
+      script.async = true;
+      script.src = url;
+      document.head.appendChild(script);
+    });
+  }
+
+  export function load(url:string, options = {inject: true, cors: false}) {
+    return new Promise((resolve:NOOP, reject:NOOP)=> {
+      if (cached.has(url)) {
+        resolve()
+      } else {
+        if (pending.has(url)) {
+          pending.get(url).push([resolve, reject])
         } else {
-          if (!pending.has(url)) {
-            pending.set(url, [])
-          }
-          pending.get(url).push(resolve);
-        }
-      }
-      else {
-        console.debug('downloading', url);
-        cache.set(url, downloading);
-        fetch(url).then(response=> {
-          console.debug('downloaded', url);
-          response.text().then(text=> {
-            eval(text);
-            cache.set(url, downloaded);
-            resolve();
-            if (pending.has(url)) {
-              pending.get(url).forEach((x=>x()));
+          let xss = [<PendingCallback>[resolve, reject]];
+          pending.set(url, xss);
+          let promise:Promise = options.inject ? injectSource(url) : runSource(url, options.cors);
+          promise
+            .then(()=> {
+              cached.add(url);
+              xss.forEach(xs=>xs[0]());
               pending.delete(url);
-            }
-          });
-        });
+            })
+            .catch(()=> {
+              xss.forEach(xs=>xs[1]());
+              pending.delete(url);
+            });
+        }
       }
     });
   }
