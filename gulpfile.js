@@ -198,6 +198,7 @@ gulp.task('run', done=> {
     .pipe(webserver({
       livereload: true
       , host: '0.0.0.0'
+      , port: 8080
       , directoryListing: {
         enable: false,
         path: paths.distDir
