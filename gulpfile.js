@@ -79,8 +79,8 @@ gulp.task('test', ()=> {
 
 gulp.task('babel', () => {
   return gulp.src('src/**/*.js')
-    .pipe(filesize())
     .pipe(sourcemaps.init())
+    .pipe(filesize())
     .pipe(babel({
       presets: [
         'es2015'
@@ -97,8 +97,8 @@ gulp.task('babel', () => {
 
 gulp.task('typescript', ()=> {
   return gulp.src('src/**/*.ts')
-    .pipe(filesize())
     .pipe(sourcemaps.init())
+    .pipe(filesize())
     .pipe(ts({
       target: 'es6'
       , noImplicitAny: true
@@ -112,30 +112,34 @@ gulp.task('typescript', ()=> {
 gulp.task('sass', done=> {
   gulp.src(paths.sass)
     .pipe(sourcemaps.init())
+    .pipe(filesize()) // raw file
     .pipe(concat('bundle.scss'))
     .pipe(sass({
       errLogToConsole: true
     }))
-    .pipe(gulp.dest(paths.distDir))
+    .pipe(filesize()) // sass output
     .pipe(minifyCss({
       keepSpecialComments: 0
     }))
     .pipe(rename({
       extname: '.min.css'
     }))
+    .pipe(filesize()) // minifyCss output
     .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest(paths.distDir))
 });
 
 gulp.task('script', (done)=> {
   return gulp.src(paths.script)
-    .pipe(filesize()) // raw files
     .pipe(sourcemaps.init())
+    .pipe(filesize()) // raw files
     .pipe(ts({
       target: 'es6'
       , noImplicitAny: true
       , out: 'bundle.es6.js'
+      , allowJs: true
     }))
+    // .pipe(gulp.dest('bundle.es6.js'))
     .pipe(filesize()) // tsc output
     .pipe(babel({
       presets: ['es2015']

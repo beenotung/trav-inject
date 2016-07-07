@@ -65,8 +65,8 @@ if [ "$1" == "-f" ] || [ "$1" == "--full-install" ]; then
   fi
   cmd="$cmd install -g";
   # concat a list of npm global packages
-  cmd="$cmd gulp";
-  cmd="$cmd bower";
+#  cmd="$cmd gulp";
+#  cmd="$cmd bower";
 #  cmd="$cmd http-server";
   # install the npm global packages
   echo "$cmd"; # to let use know why need sudo (if need to enter password)
@@ -77,7 +77,8 @@ fi
 echo "installing npm local packages...";
 cmd="npm install --save-dev";
 # concat a list of npm local packages
-cmd="$cmd gulp";
+cmd="$cmd bower";
+cmd="$cmd gulp"
 cmd="$cmd gulp-clean";
 cmd="$cmd gulp-filesize";
 cmd="$cmd gulp-sourcemaps";
@@ -102,12 +103,12 @@ echo "$cmd";
 echo "$cmd" | sh;
 echo "finish, installed npm local packages";
 
-echo "installing bower packages...";
-cmd="bower install --save"
+#echo "installing bower packages...";
+#cmd="bower install --save"
 # concat a list of bower packages
-cmd="$cmd babel-polyfill";
-echo "$cmd";
-echo "$cmd" | sh;
-echo "finish, installed bower packages...";
+#cmd="$cmd babel-polyfill";
+#echo "$cmd";
+#echo "$cmd" | sh;
+#echo "finish, installed bower packages...";
 
 echo "All finished.";
