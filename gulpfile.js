@@ -12,12 +12,20 @@ const
   , concat = require('gulp-concat')
   , ts = require('gulp-typescript')
   , merge = require('merge2')
+  , sass = require('gulp-sass')
+  , minifyCss = require('gulp-minify-css')
+  , rename = require('gulp-rename')
+  , replace = require('gulp-replace')
+  , webserver = require('gulp-webserver')
   ;
 
 const paths = {
-  sass: ['src/**/*.scss']
+  html: ['index.html']
+  , sass: ['src/**/*.scss','src/**/*.css']
   , script: ['src/**/*.ts', 'src/**/*.js']
-  , dist: ['dist/*']
+  , distDir: 'dist'
+  , distFile: ['dist/*']
+  , srcFile: ['index.html', 'src/**/*.*']
 };
 
 // const watchify = require('watchify');
@@ -65,7 +73,7 @@ gulp.task('test', ()=> {
       insertGlobals: true
       , debug: !gulp.env.production
     }))
-    .pipe(gulp.dest('dist'));
+    .pipe(gulp.dest(paths.distDir));
 });
 
 gulp.task('babel', () => {
@@ -83,7 +91,7 @@ gulp.task('babel', () => {
     }))
     .pipe(concat('bundle.js'))
     .pipe(filesize()) // babel output
-    .pipe(gulp.dest('dist'));
+    .pipe(gulp.dest(paths.distDir));
 });
 
 gulp.task('typescript', ()=> {
@@ -97,10 +105,26 @@ gulp.task('typescript', ()=> {
     }))
     .pipe(filesize()) // tsc output
     // .pipe(concat('bundle.ts'))
-    .pipe(gulp.dest('dist'));
+    .pipe(gulp.dest(paths.distDir));
 });
 
-gulp.task('build', ()=> {
+gulp.task('sass', done=> {
+  gulp.src(paths.sass)
+    .pipe(concat('bundle.scss'))
+    .pipe(sass({
+      errLogToConsole: true
+    }))
+    .pipe(gulp.dest(paths.distDir))
+    .pipe(minifyCss({
+      keepSpecialComments: 0
+    }))
+    .pipe(rename({
+      extname: '.min.css'
+    }))
+    .pipe(gulp.dest(paths.distDir))
+});
+
+gulp.task('script', (done)=> {
   return gulp.src(paths.script)
     .pipe(filesize()) // raw files
     .pipe(sourcemaps.init())
@@ -126,15 +150,23 @@ gulp.task('build', ()=> {
     // }))
     // .pipe(filesize()) // browserify output
     .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest('dist'));
+    .pipe(gulp.dest(paths.distDir))
 });
 
-gulp.task('watch', ()=> {
-  gulp.watch(paths.script, ['build']);
+gulp.task('html', ()=> {
+  gulp.src(paths.html)
+    .pipe(replace(/dist\//g, ''))
+    .pipe(gulp.dest(paths.distDir))
+});
+
+gulp.task('build', ['html', 'script', 'sass']);
+
+gulp.task('watch', done=> {
+  gulp.watch(paths.srcFile, ['build'])
 });
 
 gulp.task('clean', ()=> {
-  return gulp.src(paths.dist, {read: false})
+  return gulp.src(paths.distFile, {read: false})
     .pipe(filesize())
     .pipe(clean());
 });
@@ -147,11 +179,25 @@ gulp.task('typescript-library', ()=> {
       noExternalResolve: true
     }));
   return merge([
-    tsResult.dts.pipe(gulp.dest('dist/definitions'))
-    , tsResult.js.pipe(gulp.dest('dist/js'))
+    tsResult.dts.pipe(gulp.dest(paths.distDir + '/definitions'))
+    , tsResult.js.pipe(gulp.dest(paths.distDir + '/js'))
   ]);
 });
 
-gulp.task('build-watch', ['build', 'watch']);
+gulp.task('run', done=> {
+  gulp.src(paths.distDir)
+    .pipe(webserver({
+      livereload: true
+      , host: '0.0.0.0'
+      , directoryListing: {
+        enable: false,
+        path: paths.distDir
+      }
+      , open: true
+      // , path: paths.distDir + '/'
+      // , fallback: 'index.html'
+    }))
+    .on('end', done)
+});
 
-gulp.task('default', ['build-watch']);
+gulp.task('start', ['build', 'watch', 'run']);

@@ -39,32 +39,48 @@ module require {
   const pending = new Map<string,PendingCallback[]>();
   const cached = new Set<string>();
 
-  async function runSource(url:string, cors:boolean) {
+  /**@return file extension*/
+  async function checkSource(url:string, cors:boolean):Promise<string> {
+    if (url.indexOf('.') == -1)
+      throw new URIError('no sub-filename detected');
     let option = {
       mode: cors ? 'cors' : 'no-cors'
+      , cache: 'force-cache'
     };
     let response = await fetch(url, option);
     let text = await response.text();
     if (text.length == 0) {
-      throw new Error('empty file')
+      throw new TypeError('empty file')
     } else {
-      eval(text);
-      return
+      return url.split('.').pop();
     }
   }
 
-  async function injectSource(url:string) {
+  async function injectSource(url:string, cors:boolean) {
+    let filetype = await checkSource(url, cors);
     return new Promise((resolve, reject)=> {
-      let script = document.createElement('script');
-      script.onload = resolve;
-      script.onerror = reject;
-      script.async = true;
-      script.src = url;
-      document.head.appendChild(script);
+      switch (filetype) {
+        case 'js':
+          let script = document.createElement('script');
+          script.onload = resolve;
+          script.onerror = reject;
+          script.async = true;
+          script.src = url;
+          document.head.appendChild(script);
+          break;
+        case 'css':
+          let link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = url;
+          document.head.appendChild(link);
+          break;
+        default:
+          throw new TypeError('invalid file type :' + filetype);
+      }
     });
   }
 
-  export function load(url:string, options = {inject: true, cors: false}) {
+  export function load(url:string, cors = false) {
     return new Promise((resolve:NOOP, reject:NOOP)=> {
       if (cached.has(url)) {
         resolve()
@@ -74,8 +90,7 @@ module require {
         } else {
           let xss = [<PendingCallback>[resolve, reject]];
           pending.set(url, xss);
-          let promise:Promise = options.inject ? injectSource(url) : runSource(url, options.cors);
-          promise
+          injectSource(url, cors)
             .then(()=> {
               cached.add(url);
               xss.forEach(xs=>xs[0]());
@@ -92,7 +107,7 @@ module require {
 }
 declare const $:any;
 async function printline(...xs:any[]) {
-  await require.load('dist/lib/jquery/dist/jquery.js');
+  await require.load('lib/jquery/dist/jquery.js');
   // console.log('$', $);
   $(window).ready(()=> {
     let e = document.createElement('p');
@@ -111,3 +126,6 @@ async function run(time:number) {
 let tasks = Array.from(new Set([1, 2, 3, 4, 4, 2, 1]))
   .map(x=>x * 1000)
   .forEach(x=>run(x));
+
+document.head.appendChild(document.createElement('title')).textContent = 'new title';
+require.load('bundle.css');
