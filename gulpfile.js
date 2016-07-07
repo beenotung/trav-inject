@@ -14,6 +14,7 @@ const
   , merge = require('merge2')
   , sass = require('gulp-sass')
   , minifyCss = require('gulp-minify-css')
+  , uglify = require('gulp-uglify')
   , rename = require('gulp-rename')
   , replace = require('gulp-replace')
   , webserver = require('gulp-webserver')
@@ -21,7 +22,7 @@ const
 
 const paths = {
   html: ['index.html']
-  , sass: ['src/**/*.scss','src/**/*.css']
+  , sass: ['src/**/*.scss', 'src/**/*.css']
   , script: ['src/**/*.ts', 'src/**/*.js']
   , distDir: 'dist'
   , distFile: ['dist/*']
@@ -110,6 +111,7 @@ gulp.task('typescript', ()=> {
 
 gulp.task('sass', done=> {
   gulp.src(paths.sass)
+    .pipe(sourcemaps.init())
     .pipe(concat('bundle.scss'))
     .pipe(sass({
       errLogToConsole: true
@@ -121,6 +123,7 @@ gulp.task('sass', done=> {
     .pipe(rename({
       extname: '.min.css'
     }))
+    .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest(paths.distDir))
 });
 
@@ -131,7 +134,7 @@ gulp.task('script', (done)=> {
     .pipe(ts({
       target: 'es6'
       , noImplicitAny: true
-      , out: 'bundle.js'
+      , out: 'bundle.es6.js'
     }))
     .pipe(filesize()) // tsc output
     .pipe(babel({
@@ -143,12 +146,18 @@ gulp.task('script', (done)=> {
         // , 'babel-plugin-transform-es2015-modules-commonjs'
       ]
     }))
+    .pipe(rename('bundle.babel.js'))
     .pipe(filesize()) // babel output
+
     // .pipe(browserify({
     //   insertGlobals: true
     //   , debug: !gulp.env.production
     // }))
     // .pipe(filesize()) // browserify output
+
+    .pipe(uglify())
+    .pipe(rename('bundle.min.js'))
+    .pipe(filesize()) // uglify output
     .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest(paths.distDir))
 });

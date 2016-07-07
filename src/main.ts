@@ -108,7 +108,7 @@ module require {
 declare const $:any;
 async function printline(...xs:any[]) {
   await require.load('lib/jquery/dist/jquery.js');
-  // console.log('$', $);
+  console.log('$', $);
   $(window).ready(()=> {
     let e = document.createElement('p');
     e.innerText = xs.join();
@@ -128,4 +128,4 @@ let tasks = Array.from(new Set([1, 2, 3, 4, 4, 2, 1]))
   .forEach(x=>run(x));
 
 document.head.appendChild(document.createElement('title')).textContent = 'new title';
-require.load('bundle.css');
+// require.load('bundle.css');
