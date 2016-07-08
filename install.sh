@@ -103,12 +103,13 @@ echo "$cmd";
 echo "$cmd" | sh;
 echo "finish, installed npm local packages";
 
-#echo "installing bower packages...";
+echo "installing bower packages...";
 #cmd="bower install --save"
 # concat a list of bower packages
 #cmd="$cmd babel-polyfill";
-#echo "$cmd";
-#echo "$cmd" | sh;
-#echo "finish, installed bower packages...";
+cmd="npm run install";
+echo "$cmd";
+echo "$cmd" | sh;
+echo "finish, installed bower packages...";
 
 echo "All finished.";
