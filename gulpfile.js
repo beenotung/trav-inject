@@ -29,54 +29,6 @@ const paths = {
   , srcFile: ['index.html', 'src/**/*.*']
 };
 
-// const watchify = require('watchify');
-// const browserify = require('gulp-browserify');
-// var source = require('vinyl-source-stream');
-// var buffer = require('vinyl-buffer');
-
-// function compile(watch) {
-//   var bundler = watchify(browserify('./src/*.js', {debug: true}).transform(babel));
-//
-//   function rebundle() {
-//     bundler.bundle()
-//       .on('error', err=> {
-//         console.error(err);
-//         this.emit('end');
-//       })
-//       .pipe(source('build.js'))
-//       .pipe(buffer())
-//       .pipe(sourcemaps.init({loadMaps: true}))
-//       .pipe(sourcemaps.write('./'))
-//       .pipe(gulp.dest('./build'));
-//   }
-//
-//   if (watch) {
-//     bundler.on('update', ()=> {
-//       console.log('-> bundling...');
-//       rebundle();
-//     })
-//   }
-//   rebundle();
-// }
-
-// function watch() {
-//   return compile(true)
-// }
-
-// gulp.task('build', compile);
-// gulp.task('watch', watch);
-
-// gulp.task('default', ['watch']);
-
-gulp.task('test', ()=> {
-  return gulp.src(paths.script)
-    .pipe(browserify({
-      insertGlobals: true
-      , debug: !gulp.env.production
-    }))
-    .pipe(gulp.dest(paths.distDir));
-});
-
 gulp.task('babel', () => {
   return gulp.src('src/**/*.js')
     .pipe(sourcemaps.init())
