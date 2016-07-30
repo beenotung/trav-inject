@@ -18,6 +18,10 @@ const
   , rename = require('gulp-rename')
   , replace = require('gulp-replace')
   , webserver = require('gulp-webserver')
+  , browserify = require('browserify')
+  , tsify = require('tsify')
+  , source = require('source')
+  , buffer = require('gulp-buffer')
   ;
 
 const paths = {
@@ -27,6 +31,7 @@ const paths = {
   , distDir: 'dist'
   , distFile: ['dist/*']
   , srcFile: ['index.html', 'src/**/*.*']
+  , mainTs: "src/main.ts"
 };
 
 gulp.task('babel', () => {
@@ -167,3 +172,20 @@ gulp.task('run', done=> {
 });
 
 gulp.task('start', ['build', 'watch', 'run']);
+
+/* ---- testing ---- */
+// reference [TypeScript + Browserify + SourceMaps] : http://stackoverflow.com/questions/36184581/typescript-browserify-sourcemaps-in-gulp
+gulp.task('scripts', function () {
+  return browserify(paths.mainTs, {debug: true})
+    .on('error', console.error.bind(console))
+    .plugin(tsify)
+    .bundle()
+    .pipe(source('all.js'))
+    .pipe(buffer())
+    .pipe(sourcemaps.init({loadMaps: true}))
+    .pipe(gulp.dest(paths.outscripts))
+    .pipe(rename('all.min.js'))
+    .pipe(uglify())
+    .pipe(sourcemaps.write())
+    .pipe(gulp.dest(paths.outscripts));
+});
