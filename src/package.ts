@@ -1,5 +1,5 @@
-///<reference path="../typings/tsd.d.ts"/>
+///<reference path="../typings/index.d.ts"/>
 
-///<reference path="../lib/jslib/dist/horizon-param.d.ts"/>
-///<reference path="../lib/jslib/dist/stub.d.ts"/>
-///<reference path="../lib/jslib/dist/utils.d.ts"/>
+///<reference path="../lib/jslib/es6/src/utils-es6.ts"/>
+///<reference path="../lib/jslib/es6/src/stub-es6.d.ts"/>
+///<reference path="../lib/jslib/es6/src/horizon.d.ts"/>
