@@ -10,3 +10,5 @@ webdemo.iml
 
 # project
 dist/
+build/
+lib/

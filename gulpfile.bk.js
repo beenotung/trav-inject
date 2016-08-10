@@ -5,7 +5,6 @@
 
 const
   gulp = require('gulp')
-  , gutil = require('gulp-util')
   , clean = require('gulp-clean')
   , filesize = require('gulp-filesize')
   , sourcemaps = require('gulp-sourcemaps')
@@ -23,16 +22,7 @@ const
   , tsify = require('tsify')
   , source = require('source')
   , buffer = require('gulp-buffer')
-  , runSequence = require('run-sequence')
-  , dirSync = require('gulp-directory-sync')
   ;
-
-var watchify = require('watchify');
-var fs = require('fs');
-var babelify = require('babelify');
-var watch = require('gulp-watch');
-var livereload = require('gulp-livereload');
-var assign = require('lodash.assign');
 
 const paths = {
   html: ['index.html']
@@ -40,23 +30,12 @@ const paths = {
   , script: ['src/**/*.ts', 'src/**/*.js']
   , distDir: 'dist'
   , distFile: ['dist/*']
-  , buildFile: ['build/**/*.js']
   , srcFile: ['index.html', 'src/**/*.*']
   , mainTs: "src/main.ts"
-  , mainJs: 'build/src/main.js'
-  , buildDir: 'build'
-  , buildSrcDir: 'build/src'
-  , jsOutDir: 'dist'
-  , jsOutFile: 'dist/bundle.js'
-  , libSrc: 'lib'
 };
 
 gulp.task('babel', () => {
-  let src_files = [
-    'build/**/*.js'
-    , '!build/**/node_modules/**/*.js'
-  ];
-  return gulp.src(src_files)
+  return gulp.src('src/**/*.js')
     .pipe(sourcemaps.init())
     .pipe(filesize())
     .pipe(babel({
@@ -64,17 +43,17 @@ gulp.task('babel', () => {
         'es2015'
       ]
       , plugins: [
-        // 'transform-runtime'
-        // , 'babel-plugin-transform-es2015-modules-umd'
+        'transform-runtime'
+        , 'babel-plugin-transform-es2015-modules-umd'
       ]
     }))
-    // .pipe(concat('bundle.js'))
+    .pipe(concat('bundle.js'))
     .pipe(filesize()) // babel output
     .pipe(gulp.dest(paths.distDir));
 });
 
 gulp.task('typescript', ()=> {
-  return gulp.src(paths.script)
+  return gulp.src('src/**/*.ts')
     .pipe(sourcemaps.init())
     .pipe(filesize())
     .pipe(ts({
@@ -85,55 +64,6 @@ gulp.task('typescript', ()=> {
     .pipe(filesize()) // tsc output
     // .pipe(concat('bundle.ts'))
     .pipe(gulp.dest(paths.distDir));
-});
-
-gulp.task('tsc', ()=> {
-  let tsProject = ts.createProject('tsconfig.json');
-  var tsResult = tsProject.src()
-    .pipe(ts(tsProject));
-  return tsResult.js
-    .pipe(gulp.dest(paths.buildSrcDir));
-});
-
-gulp.task('sync-lib', function () {
-  let source_dir = paths.libSrc;
-  let dest_dir = paths.buildDir + '/' + paths.libSrc;
-  return gulp.src('')
-    .pipe(dirSync(source_dir, dest_dir, {printSummary: true}))
-    .on('error', gutil.log);
-});
-
-let wb;
-{
-  let customOpts = {debug: true};
-  let opts = assign({}, watchify.args, customOpts);
-  wb = watchify(browserify(opts));
-  wb.transform(babelify.configure({
-    // experimental: true,
-  }));
-  wb.add(paths.mainJs);
-}
-gulp.task('babel-browser', function (done) {
-  /* reference : https://github.com/mpj/fpjs8.git */
-  return wb
-    .bundle() // do the actual browerify/babelify compilation
-    .on('error', function (err) {
-      // If browserify fails at compiling,
-      // we want that to be forwarded to the browser,
-      // or we'll be confused why nothing has changed.
-      fs.createWriteStream(paths.jsOutFile)
-        .write(
-          'var errStr = "COMPILATION ERROR! ' + err.message + '";' +
-          'console.warn(errStr); document.write(errStr)');
-      console.warn('Error :', err.message);
-      this.emit('end')
-    })
-    .pipe(fs.createWriteStream(paths.jsOutFile));
-  // write the whole shabang to teh build dir
-});
-
-gulp.task('script', ()=> {
-  runSequence('tsc', 'sync-lib', 'babel-browser')
 });
 
 gulp.task('sass', done=> {
@@ -156,7 +86,7 @@ gulp.task('sass', done=> {
     .pipe(gulp.dest(paths.distDir))
 });
 
-gulp.task('script_old', (done)=> {
+gulp.task('script', (done)=> {
   return gulp.src(paths.script)
     .pipe(sourcemaps.init())
     .pipe(filesize()) // raw files
@@ -206,12 +136,8 @@ gulp.task('watch', done=> {
 });
 
 gulp.task('clean', ()=> {
-  let src = [
-    paths.distDir + '/*'
-    , paths.buildDir + '/*'
-  ];
-  return gulp.src(src, {read: false})
-  // .pipe(filesize())
+  return gulp.src(paths.distFile, {read: false})
+    .pipe(filesize())
     .pipe(clean());
 });
 
@@ -254,7 +180,7 @@ gulp.task('scripts', function () {
     .on('error', console.error.bind(console))
     .plugin(tsify)
     .bundle()
-    .pipe(concat('all.js'))
+    .pipe(source('all.js'))
     .pipe(buffer())
     .pipe(sourcemaps.init({loadMaps: true}))
     .pipe(gulp.dest(paths.outscripts))

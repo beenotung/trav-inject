@@ -1,7 +1,8 @@
 {
   "name": "webdemo",
   "globalDependencies": {
-    "jquery": "github:DefinitelyTyped/DefinitelyTyped/jquery/jquery.d.ts#2aa973a605d0fc7ae4ea5c32653331a819e81f71",
+    "isomorphic-fetch": "registry:dt/isomorphic-fetch#0.0.0+20160524142046",
+    "jquery": "registry:dt/jquery#1.10.0+20160704162008",
     "rx": "registry:dt/rx#0.0.0+20160317120654",
     "rx-lite": "registry:dt/rx-lite#0.0.0+20160628114230"
   }
