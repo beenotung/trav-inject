@@ -51,22 +51,32 @@
     "tsify": "^1.0.1",
     "typescript": "^1.8.10",
     "typings": "^1.3.2",
+    "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.1.0",
     "watchify": "^3.7.0"
   },
   "dependencies": {},
   "main": "src/index.js",
   "scripts": {
-    "preinstall": "git submodule update --init --recursive && cd lib/jslib && npm run install",
+    "--------------------------------install": "",
+    "preinstall": "git submodule update --init --recursive && npm run install-dep && npm run build-dep",
     "postinstall": "bower install && typings install",
+    "--------------------------------dep": "",
+    "install-dep": "cd lib/jslib && npm install",
     "clean-dep": "cd lib/jslib && npm run clean",
-    "clean": "gulp clean",
     "build-dep": "cd lib/jslib && npm run build",
-    "prebuild": "npm run clean && npm run build-dep",
+    "test-dep": "cd lib/jslib && npm run test",
+    "--------------------------------dep-hook": "",
+    "prebuild-dep": "npm run clean-dep",
+    "--------------------------------main": "",
+    "clean": "gulp clean",
     "build": "gulp build",
-    "pretest": "cd lib/jslib && npm run test",
     "test": "node test",
     "start": "gulp start",
-    "temp": "npm run clean && gulp tsc"
+    "temp": "npm run clean && gulp tsc",
+    "--------------------------------main-hook": "",
+    "prebuild": "npm run clean",
+    "pretest": "npm run test-dep",
+    "--------------------------------": ""
   }
 }

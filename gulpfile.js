@@ -1,6 +1,8 @@
 // reference [babel] : https://babeljs.io/docs/setup/#installation
 // reference [gulp] : https://github.com/gulpjs/gulp/blob/master/docs/API.md
 // reference [watchify, browserify] : https://gist.github.com/danharper/3ca2273125f500429945
+// .. https://github.com/mpj/fpjs8.git
+// .. http://stackoverflow.com/questions/31708318/gulp-doesnt-exit-with-watchify-browserify
 // refernece [filesize] : http://stackoverflow.com/questions/21806925/get-the-current-file-name-in-gulp-src
 
 const
@@ -22,7 +24,7 @@ const
   , browserify = require('browserify')
   , tsify = require('tsify')
   , source = require('vinyl-source-stream')
-  , buffer = require('gulp-buffer')
+  , buffer = require('vinyl-buffer')
   , runSequence = require('run-sequence')
   , dirSync = require('gulp-directory-sync')
   ;
@@ -48,6 +50,8 @@ const paths = {
   , buildSrcDir: 'build/src'
   , jsOutDir: 'dist'
   , jsOutFile: 'dist/bundle.js'
+  , jsOutFilename: 'bundle.js'
+  , jsOutMinifyFilename: 'bundle.min.js'
   , libSrc: 'lib'
 };
 
@@ -103,38 +107,18 @@ gulp.task('sync-lib', function () {
     .on('error', gutil.log);
 });
 
-let wb;
-{
-  let customOpts = {debug: true};
+function bundlerFunc() {
+  let customOpts = {
+    debug: true //inline sourcemap
+  };
   let opts = assign({}, watchify.args, customOpts);
-  wb = watchify(browserify(opts));
-  wb.transform(babelify.configure({
-    // experimental: true,
-  }));
-  wb.add(paths.mainJs);
-}
-let w, b;
-{
-  let customOpts = {debug: true};
-  let opts = assign({}, watchify.args, customOpts);
-  b = ()=> browserify(opts);
-  w = watchify(b());
-  w.on('log', gutil.log);
-}
-function bundle(pkg) {
-  return pkg.bundle()
-    .pipe(source(paths.mainJs))
-    .pipe(gulp.dest(paths.jsOutFile))
-}
-gulp.task('babel-browser', bundle.bind(null, b()));
-gulp.task('babel-browser_old', function (done) {
-  /* reference : https://github.com/mpj/fpjs8.git */
-  return wb
-    .bundle() // do the actual browerify/babelify compilation
+  return browserify(opts)
+    .transform(babelify.configure({
+      // experimental: true,
+    }))
+    .add(paths.mainJs)
+    .on('log', gutil.log)
     .on('error', function (err) {
-      // If browserify fails at compiling,
-      // we want that to be forwarded to the browser,
-      // or we'll be confused why nothing has changed.
       fs.createWriteStream(paths.jsOutFile)
         .write(
           'var errStr = "COMPILATION ERROR! ' + err.message + '";' +
@@ -142,9 +126,21 @@ gulp.task('babel-browser_old', function (done) {
       console.warn('Error :', err.message);
       this.emit('end')
     })
-    .pipe(fs.createWriteStream(paths.jsOutFile));
-  // write the whole shabang to teh build dir
-});
+}
+let watcher = watchify(bundlerFunc());
+function bundle(pkg) {
+  return pkg.bundle()
+    .pipe(source(paths.mainJs))
+    .pipe(buffer())
+    .pipe(sourcemaps.init({
+      loadMaps: true
+    }))
+    .pipe(rename(paths.jsOutFilename))
+    .pipe(sourcemaps.write('./'))
+    .pipe(gulp.dest(paths.distDir))
+}
+
+gulp.task('babel-browser', bundle.bind(null, bundlerFunc()));
 
 gulp.task('script', ()=> {
   runSequence('tsc', 'sync-lib', 'babel-browser')
@@ -213,7 +209,6 @@ gulp.task('html', ()=> {
     .pipe(gulp.dest(paths.distDir))
 });
 
-gulp.task('build', ['html', 'script', 'sass']);
 
 gulp.task('watch', done=> {
   gulp.watch(paths.srcFile, ['build'])
@@ -227,19 +222,6 @@ gulp.task('clean', ()=> {
   return gulp.src(src, {read: false})
   // .pipe(filesize())
     .pipe(clean());
-});
-
-/* this is for library, not for web app project*/
-gulp.task('typescript-library', ()=> {
-  const tsResult = gulp.src(paths.script)
-    .pipe(ts({
-      declaration: true,
-      noExternalResolve: true
-    }));
-  return merge([
-    tsResult.dts.pipe(gulp.dest(paths.distDir + '/definitions'))
-    , tsResult.js.pipe(gulp.dest(paths.distDir + '/js'))
-  ]);
 });
 
 gulp.task('run', done=> {
@@ -259,6 +241,7 @@ gulp.task('run', done=> {
     .on('end', done)
 });
 
+gulp.task('build', ['html', 'script', 'sass']);
 gulp.task('start', ['build', 'watch', 'run']);
 
 /* ---- testing ---- */
@@ -271,9 +254,9 @@ gulp.task('scripts', function () {
     .pipe(concat('all.js'))
     .pipe(buffer())
     .pipe(sourcemaps.init({loadMaps: true}))
-    .pipe(gulp.dest(paths.outscripts))
+    .pipe(gulp.dest('dist/bundle.js'))
     .pipe(rename('all.min.js'))
     .pipe(uglify())
     .pipe(sourcemaps.write())
-    .pipe(gulp.dest(paths.outscripts));
+    .pipe(gulp.dest('dist/bundle.min.js'));
 });
