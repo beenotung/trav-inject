@@ -14,7 +14,7 @@ function print(...xs: any[]) {
   })
 }
 
-print('hello', 'world');
+print('hello world');
 
 async function rollDice() {
   return new Promise((resolve, reject)=> {
@@ -37,8 +37,9 @@ async function play() {
 
 play();
 
-print('this should be red');
+print('this should be blue');
 
 // require('test');
 import {require as JsRequire} from "../lib/jslib/es6/dist/es6/src/utils-es6"
 console.log('code', JsRequire.load.toString());
+print(JsRequire.load.toString())

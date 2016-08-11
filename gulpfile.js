@@ -156,11 +156,21 @@ function runServer(done, host, port) {
       // , path: paths.distDir + '/'
       // , fallback: 'index.html'
     }))
-    .on('end', done)
+    // .on('end', done)
 }
 
 gulp.task('run-dev', done=>runServer(done, 'localhost', 8080));
 gulp.task('run-publish', done=>runServer(done, '0.0.0.0', 8080));
+
+gulp.task('watch-html', ()=> {
+  gulp.watch(paths.html, ['html'])
+});
+gulp.task('watch-sass', ()=> {
+  gulp.watch(paths.sass, ['sass'])
+});
+gulp.task('watch-script', ()=> {
+  gulp.watch(paths.script, ['script'])
+});
 
 /* ---- chained tasks (internal) ---- */
 
@@ -168,9 +178,7 @@ gulp.task('script', ()=> {
   runSequence('tsc', 'sync-lib', 'babel-browser')
 });
 
-gulp.task('watch', done=> {
-  gulp.watch(paths.srcFile, ['build'])
-});
+gulp.task('watch', ['watch-html', 'watch-sass', 'watch-script']);
 
 /* ---- main tasks (external) ---- */
 
