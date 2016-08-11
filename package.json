@@ -73,13 +73,14 @@
     "--------------------------------main": "",
     "clean": "gulp clean",
     "build": "gulp build",
-    "test": "node test",
-    "start": "gulp start",
-    "temp": "npm run clean && gulp tsc",
+    "test": "echo \"Test is not implemented\" && exit 1",
+    "start": "gulp dev",
+    "publish": "gulp publish",
     "--------------------------------main-hook": "",
     "prebuild": "npm run clean",
-    "prestart": "npm run build",
     "pretest": "npm run test-dep",
+    "prestart": "npm run build",
+    "prepublish":"npm run build",
     "--------------------------------": ""
   }
 }

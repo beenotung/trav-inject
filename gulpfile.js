@@ -142,15 +142,37 @@ function bundle(pkg) {
 /* babel (ES6 to ES5) t + browserify */
 gulp.task('babel-browser', bundle.bind(null, bundlerFunc()));
 
+function runServer(done, host, port) {
+  return gulp.src(paths.distDir)
+    .pipe(webserver({
+      livereload: true
+      , host: host
+      , port: port
+      , directoryListing: {
+        enable: false,
+        path: paths.distDir
+      }
+      , open: true
+      // , path: paths.distDir + '/'
+      // , fallback: 'index.html'
+    }))
+    .on('end', done)
+}
+
+gulp.task('run-dev', done=>runServer(done, 'localhost', 8080));
+gulp.task('run-publish', done=>runServer(done, '0.0.0.0', 8080));
+
+/* ---- chained tasks (internal) ---- */
+
 gulp.task('script', ()=> {
   runSequence('tsc', 'sync-lib', 'babel-browser')
 });
 
-/* ---- main tasks (external) ---- */
-
 gulp.task('watch', done=> {
   gulp.watch(paths.srcFile, ['build'])
 });
+
+/* ---- main tasks (external) ---- */
 
 gulp.task('clean', ()=> {
   let src = [
@@ -164,24 +186,8 @@ gulp.task('clean', ()=> {
     .pipe(clean());
 });
 
-gulp.task('run', done=> {
-  gulp.src(paths.distDir)
-    .pipe(webserver({
-      livereload: true
-      // , host: '0.0.0.0'
-      , host: 'localhost'
-      , port: 8080
-      , directoryListing: {
-        enable: false,
-        path: paths.distDir
-      }
-      , open: true
-      // , path: paths.distDir + '/'
-      // , fallback: 'index.html'
-    }))
-    .on('end', done)
-});
-
 gulp.task('build', ['html', 'sass', 'script']);
 
-gulp.task('start', ['run', 'watch']);
+gulp.task('dev', ['watch', 'run-dev']);
+
+gulp.task('publish', ['run-publish']);

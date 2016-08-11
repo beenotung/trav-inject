@@ -8,13 +8,13 @@
 
 document.title = 'seed';
 
-function print() {
-  Array.prototype.forEach.call(arguments, (s:string)=> {
+function print(...xs: any[]) {
+  Array.prototype.forEach.call(arguments, (s: string)=> {
     document.body.appendChild(document.createElement('p')).textContent = s;
   })
 }
 
-print('test');
+print('hello', 'world');
 
 async function rollDice() {
   return new Promise((resolve, reject)=> {
