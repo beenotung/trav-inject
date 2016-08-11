@@ -39,7 +39,7 @@ var assign = require('lodash.assign');
 const paths = {
   html: ['index.html']
   , sass: ['src/**/*.scss', 'src/**/*.css']
-  , script: ['src/**/*.ts', 'src/**/*.js']
+  , script: ['src/*.ts', 'src/**/*.ts', 'src/*.js', 'src/**/*.js']
   , distDir: 'dist'
   , distFile: ['dist/*']
   , buildFile: ['build/**/*.js']
@@ -77,20 +77,6 @@ gulp.task('babel', () => {
     .pipe(gulp.dest(paths.distDir));
 });
 
-gulp.task('typescript', ()=> {
-  return gulp.src(paths.script)
-    .pipe(sourcemaps.init())
-    .pipe(filesize())
-    .pipe(ts({
-      target: 'es6'
-      , noImplicitAny: true
-      , out: 'bundle.js'
-    }))
-    .pipe(filesize()) // tsc output
-    // .pipe(concat('bundle.ts'))
-    .pipe(gulp.dest(paths.distDir));
-});
-
 gulp.task('tsc', ()=> {
   let tsProject = ts.createProject('tsconfig.json');
   var tsResult = tsProject.src()
@@ -115,6 +101,9 @@ function bundlerFunc() {
   return browserify(opts)
     .transform(babelify.configure({
       // experimental: true,
+      presets: [
+        "es2015"
+      ]
     }))
     .add(paths.mainJs)
     .on('log', gutil.log)
@@ -140,6 +129,7 @@ function bundle(pkg) {
     .pipe(gulp.dest(paths.distDir))
 }
 
+/* babel (ES6 to ES5) t + browserify */
 gulp.task('babel-browser', bundle.bind(null, bundlerFunc()));
 
 gulp.task('script', ()=> {
@@ -166,49 +156,11 @@ gulp.task('sass', done=> {
     .pipe(gulp.dest(paths.distDir))
 });
 
-gulp.task('script_old', (done)=> {
-  return gulp.src(paths.script)
-    .pipe(sourcemaps.init())
-    .pipe(filesize()) // raw files
-    .pipe(ts({
-      target: 'es6'
-      , noImplicitAny: true
-      , out: 'bundle.es6.js'
-      , allowJs: true
-    }))
-    // .pipe(gulp.dest('bundle.es6.js'))
-    .pipe(filesize()) // tsc output
-    .pipe(babel({
-      presets: ['es2015']
-      , plugins: [
-        // 'transform-runtime'
-        // , 'babel-plugin-transform-es2015-modules-amd'
-        // , 'babel-plugin-transform-es2015-modules-umd'
-        // , 'babel-plugin-transform-es2015-modules-commonjs'
-      ]
-    }))
-    .pipe(rename('bundle.babel.js'))
-    .pipe(filesize()) // babel output
-
-    // .pipe(browserify({
-    //   insertGlobals: true
-    //   , debug: !gulp.env.production
-    // }))
-    // .pipe(filesize()) // browserify output
-
-    .pipe(uglify())
-    .pipe(rename('bundle.min.js'))
-    .pipe(filesize()) // uglify output
-    .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest(paths.distDir))
-});
-
 gulp.task('html', ()=> {
   gulp.src(paths.html)
     .pipe(replace(/dist\//g, ''))
     .pipe(gulp.dest(paths.distDir))
 });
-
 
 gulp.task('watch', done=> {
   gulp.watch(paths.srcFile, ['build'])
