@@ -21,7 +21,7 @@ const
   , webserver = require('gulp-webserver')
   , browserify = require('browserify')
   , tsify = require('tsify')
-  , source = require('source')
+  , source = require('vinyl-source-stream')
   , buffer = require('gulp-buffer')
   , runSequence = require('run-sequence')
   , dirSync = require('gulp-directory-sync')
@@ -113,7 +113,21 @@ let wb;
   }));
   wb.add(paths.mainJs);
 }
-gulp.task('babel-browser', function (done) {
+let w, b;
+{
+  let customOpts = {debug: true};
+  let opts = assign({}, watchify.args, customOpts);
+  b = ()=> browserify(opts);
+  w = watchify(b());
+  w.on('log', gutil.log);
+}
+function bundle(pkg) {
+  return pkg.bundle()
+    .pipe(source(paths.mainJs))
+    .pipe(gulp.dest(paths.jsOutFile))
+}
+gulp.task('babel-browser', bundle.bind(null, b()));
+gulp.task('babel-browser_old', function (done) {
   /* reference : https://github.com/mpj/fpjs8.git */
   return wb
     .bundle() // do the actual browerify/babelify compilation
