@@ -14,13 +14,13 @@ const
   // , babel = require('gulp-babel')
   , concat = require('gulp-concat')
   , ts = require('gulp-typescript')
-  // , merge = require('merge2')
+  , merge = require('merge2')
   , sass = require('gulp-sass')
   , minifyCss = require('gulp-minify-css')
   // , uglify = require('gulp-uglify')
   , rename = require('gulp-rename')
   , replace = require('gulp-replace')
-  // , webserver = require('gulp-webserver')
+  , webserver = require('gulp-webserver')
   , browserify = require('browserify')
   // , tsify = require('tsify')
   , source = require('vinyl-source-stream')
@@ -51,7 +51,7 @@ const paths = {
   , jsOutFile: 'dist/bundle.js'
   , jsOutFilename: 'bundle.js'
   , jsOutMinifyFilename: 'bundle.min.js'
-  , libSrc: 'lib'
+  , libSrcDir: 'lib'
 };
 
 /* ---- sub tasks (internal) ---- */
@@ -91,11 +91,16 @@ gulp.task('tsc', ()=> {
 });
 
 gulp.task('sync-lib', function () {
-  let source_dir = paths.libSrc;
-  let dest_dir = paths.buildDir + '/' + paths.libSrc;
-  return gulp.src('')
-    .pipe(dirSync(source_dir, dest_dir, {printSummary: true}))
-    .on('error', gutil.log);
+  let source_dir = paths.libSrcDir;
+  const sync = dest_dir=> {
+    return gulp.src('')
+      .pipe(dirSync(source_dir, dest_dir, {printSummary: true}))
+      .on('error', gutil.log)
+  };
+  return merge([
+    sync(paths.buildDir + '/' + paths.libSrcDir)
+    , sync(paths.distDir + '/' + paths.libSrcDir)
+  ])
 });
 
 function bundlerFunc() {
@@ -149,11 +154,13 @@ gulp.task('watch', done=> {
 
 gulp.task('clean', ()=> {
   let src = [
-    paths.distDir + '/*'
     , paths.buildDir + '/*'
+    , paths.distDir + '/*'
+    , '!' + paths.buildDir + '/' + paths.libSrcDir
+    , '!' + paths.distDir + '/' + paths.libSrcDir
   ];
   return gulp.src(src, {read: false})
-  // .pipe(filesize())
+    .pipe(filesize())
     .pipe(clean());
 });
 
@@ -161,7 +168,8 @@ gulp.task('run', done=> {
   gulp.src(paths.distDir)
     .pipe(webserver({
       livereload: true
-      , host: '0.0.0.0'
+      // , host: '0.0.0.0'
+      , host: 'localhost'
       , port: 8080
       , directoryListing: {
         enable: false,
@@ -176,4 +184,4 @@ gulp.task('run', done=> {
 
 gulp.task('build', ['html', 'sass', 'script']);
 
-gulp.task('start', ['build', 'watch', 'run']);
+gulp.task('start', ['run', 'watch']);

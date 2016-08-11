@@ -52,7 +52,7 @@ const paths = {
   , jsOutFile: 'dist/bundle.js'
   , jsOutFilename: 'bundle.js'
   , jsOutMinifyFilename: 'bundle.min.js'
-  , libSrc: 'lib'
+  , libSrcDir: 'lib'
 };
 
 gulp.task('typescript', ()=> {

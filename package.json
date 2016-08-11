@@ -55,7 +55,9 @@
     "vinyl-source-stream": "^1.1.0",
     "watchify": "^3.7.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "babel-polyfill": "^6.13.0"
+  },
   "main": "src/index.js",
   "scripts": {
     "--------------------------------install": "",
@@ -76,6 +78,7 @@
     "temp": "npm run clean && gulp tsc",
     "--------------------------------main-hook": "",
     "prebuild": "npm run clean",
+    "prestart": "npm run build",
     "pretest": "npm run test-dep",
     "--------------------------------": ""
   }
