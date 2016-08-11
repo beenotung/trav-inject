@@ -11,30 +11,29 @@ const
   , clean = require('gulp-clean')
   , filesize = require('gulp-filesize')
   , sourcemaps = require('gulp-sourcemaps')
-  , babel = require('gulp-babel')
+  // , babel = require('gulp-babel')
   , concat = require('gulp-concat')
   , ts = require('gulp-typescript')
-  , merge = require('merge2')
+  // , merge = require('merge2')
   , sass = require('gulp-sass')
   , minifyCss = require('gulp-minify-css')
-  , uglify = require('gulp-uglify')
+  // , uglify = require('gulp-uglify')
   , rename = require('gulp-rename')
   , replace = require('gulp-replace')
-  , webserver = require('gulp-webserver')
+  // , webserver = require('gulp-webserver')
   , browserify = require('browserify')
-  , tsify = require('tsify')
+  // , tsify = require('tsify')
   , source = require('vinyl-source-stream')
   , buffer = require('vinyl-buffer')
   , runSequence = require('run-sequence')
   , dirSync = require('gulp-directory-sync')
+  , watchify = require('watchify')
+  , fs = require('fs')
+  , babelify = require('babelify')
+  // , watch = require('gulp-watch')
+  // , livereload = require('gulp-livereload')
+  , assign = require('lodash.assign')
   ;
-
-var watchify = require('watchify');
-var fs = require('fs');
-var babelify = require('babelify');
-var watch = require('gulp-watch');
-var livereload = require('gulp-livereload');
-var assign = require('lodash.assign');
 
 const paths = {
   html: ['index.html']
@@ -55,26 +54,32 @@ const paths = {
   , libSrc: 'lib'
 };
 
-gulp.task('babel', () => {
-  let src_files = [
-    'build/**/*.js'
-    , '!build/**/node_modules/**/*.js'
-  ];
-  return gulp.src(src_files)
+/* ---- sub tasks (internal) ---- */
+
+gulp.task('html', ()=> {
+  gulp.src(paths.html)
+    .pipe(replace(/dist\//g, ''))
+    .pipe(gulp.dest(paths.distDir))
+});
+
+gulp.task('sass', done=> {
+  gulp.src(paths.sass)
     .pipe(sourcemaps.init())
-    .pipe(filesize())
-    .pipe(babel({
-      presets: [
-        'es2015'
-      ]
-      , plugins: [
-        // 'transform-runtime'
-        // , 'babel-plugin-transform-es2015-modules-umd'
-      ]
+    .pipe(filesize()) // raw file
+    .pipe(concat('bundle.scss'))
+    .pipe(sass({
+      errLogToConsole: true
     }))
-    // .pipe(concat('bundle.js'))
-    .pipe(filesize()) // babel output
-    .pipe(gulp.dest(paths.distDir));
+    .pipe(filesize()) // sass output
+    .pipe(minifyCss({
+      keepSpecialComments: 0
+    }))
+    .pipe(rename({
+      extname: '.min.css'
+    }))
+    .pipe(filesize()) // minifyCss output
+    .pipe(sourcemaps.write('.'))
+    .pipe(gulp.dest(paths.distDir))
 });
 
 gulp.task('tsc', ()=> {
@@ -136,31 +141,7 @@ gulp.task('script', ()=> {
   runSequence('tsc', 'sync-lib', 'babel-browser')
 });
 
-gulp.task('sass', done=> {
-  gulp.src(paths.sass)
-    .pipe(sourcemaps.init())
-    .pipe(filesize()) // raw file
-    .pipe(concat('bundle.scss'))
-    .pipe(sass({
-      errLogToConsole: true
-    }))
-    .pipe(filesize()) // sass output
-    .pipe(minifyCss({
-      keepSpecialComments: 0
-    }))
-    .pipe(rename({
-      extname: '.min.css'
-    }))
-    .pipe(filesize()) // minifyCss output
-    .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest(paths.distDir))
-});
-
-gulp.task('html', ()=> {
-  gulp.src(paths.html)
-    .pipe(replace(/dist\//g, ''))
-    .pipe(gulp.dest(paths.distDir))
-});
+/* ---- main tasks (external) ---- */
 
 gulp.task('watch', done=> {
   gulp.watch(paths.srcFile, ['build'])
@@ -193,22 +174,6 @@ gulp.task('run', done=> {
     .on('end', done)
 });
 
-gulp.task('build', ['html', 'script', 'sass']);
-gulp.task('start', ['build', 'watch', 'run']);
+gulp.task('build', ['html', 'sass', 'script']);
 
-/* ---- testing ---- */
-// reference [TypeScript + Browserify + SourceMaps] : http://stackoverflow.com/questions/36184581/typescript-browserify-sourcemaps-in-gulp
-gulp.task('scripts', function () {
-  return browserify(paths.mainTs, {debug: true})
-    .on('error', console.error.bind(console))
-    .plugin(tsify)
-    .bundle()
-    .pipe(concat('all.js'))
-    .pipe(buffer())
-    .pipe(sourcemaps.init({loadMaps: true}))
-    .pipe(gulp.dest('dist/bundle.js'))
-    .pipe(rename('all.min.js'))
-    .pipe(uglify())
-    .pipe(sourcemaps.write())
-    .pipe(gulp.dest('dist/bundle.min.js'));
-});
+gulp.task('start', ['build', 'watch', 'run']);
