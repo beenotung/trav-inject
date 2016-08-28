@@ -16,7 +16,8 @@ const
   , ts = require('gulp-typescript')
   , merge = require('merge2')
   , sass = require('gulp-sass')
-  , minifyCss = require('gulp-minify-css')
+  // , minifyCss = require('gulp-minify-css')
+  , cleanCSS = require('gulp-clean-css')
   // , uglify = require('gulp-uglify')
   , rename = require('gulp-rename')
   , replace = require('gulp-replace')
@@ -70,14 +71,13 @@ gulp.task('sass', done=> {
     .pipe(sass({
       errLogToConsole: true
     }))
-    .pipe(filesize()) // sass output
-    .pipe(minifyCss({
-      keepSpecialComments: 0
-    }))
+    // .pipe(filesize()) // sass output
+    // .pipe(minifyCss({keepSpecialComments: 0}))
+    .pipe(cleanCSS({compatibility: 'ie8'}))
     .pipe(rename({
       extname: '.min.css'
     }))
-    .pipe(filesize()) // minifyCss output
+    // .pipe(filesize()) // minifyCss output
     .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest(paths.distDir))
 });
@@ -156,7 +156,7 @@ function runServer(done, host, port) {
       // , path: paths.distDir + '/'
       // , fallback: 'index.html'
     }))
-    // .on('end', done)
+  // .on('end', done)
 }
 
 gulp.task('run-dev', done=>runServer(done, 'localhost', 8080));
