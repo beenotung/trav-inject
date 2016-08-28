@@ -42,4 +42,4 @@ print('this should be blue');
 // require('test');
 import {require as JsRequire} from "../lib/jslib/es6/dist/es6/src/utils-es6"
 console.log('code', JsRequire.load.toString());
-print(JsRequire.load.toString())
+print(typeof JsRequire.load === 'function');

@@ -53,6 +53,7 @@ const paths = {
   , jsOutFilename: 'bundle.js'
   , jsOutMinifyFilename: 'bundle.min.js'
   , libSrcDir: 'lib'
+  , libFile: ['lib/jslib/**/*.[ts|js|css|scss]']
 };
 
 /* ---- sub tasks (internal) ---- */
@@ -162,23 +163,32 @@ function runServer(done, host, port) {
 gulp.task('run-dev', done=>runServer(done, 'localhost', 8080));
 gulp.task('run-publish', done=>runServer(done, '0.0.0.0', 8080));
 
-gulp.task('watch-html', ()=> {
+gulp.task('html:watch', ()=> {
   gulp.watch(paths.html, ['html'])
 });
-gulp.task('watch-sass', ()=> {
+gulp.task('sass:watch', ()=> {
   gulp.watch(paths.sass, ['sass'])
 });
-gulp.task('watch-script', ()=> {
+gulp.task('script:watch', ()=> {
   gulp.watch(paths.script, ['script'])
+});
+gulp.task('lib:watch', ()=> {
+  gulp.watch(paths.libFile, ['lib'])
 });
 
 /* ---- chained tasks (internal) ---- */
 
+gulp.task('script-full', ()=> {
+  return runSequence('tsc', 'sync-lib', 'babel-browser');
+});
 gulp.task('script', ()=> {
-  runSequence('tsc', 'sync-lib', 'babel-browser')
+  return runSequence('tsc', 'babel-browser');
+});
+gulp.task('lib', ()=> {
+  return runSequence('sync-lib');
 });
 
-gulp.task('watch', ['watch-html', 'watch-sass', 'watch-script']);
+gulp.task('watch', ['html:watch', 'sass:watch', 'script:watch', 'lib:watch']);
 
 /* ---- main tasks (external) ---- */
 
@@ -194,7 +204,7 @@ gulp.task('clean', ()=> {
     .pipe(clean());
 });
 
-gulp.task('build', ['html', 'sass', 'script']);
+gulp.task('build', ['html', 'sass', 'script-full']);
 
 gulp.task('dev', ['watch', 'run-dev']);
 
