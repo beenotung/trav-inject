@@ -1,12 +1,12 @@
 # npm
 node_modules/
+npm-debug.log
 
 # typescript
 typings/
 
 # IDE
 .idea/
-webdemo.iml
 
 # project
 dist/
