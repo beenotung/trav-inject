@@ -32,7 +32,7 @@ async function play() {
   let player = gamble();
   let result = player.next();
   let func = result.value;
-  console.log('result', await result.value());
+  console.log('result', await func());
 }
 
 play();
