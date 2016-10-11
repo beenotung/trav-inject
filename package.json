@@ -68,7 +68,7 @@
     "test": "echo \"Test is not implemented\" && exit 1",
     "watch": "gulp watch",
     "dev": "run-p build watch",
-    "start": "runs-s build && gulp dev",
+    "start": "run-s build && gulp dev",
     "publish": "gulp publish",
     "--------------------------------main-hook": "",
     "prebuild": "npm run clean",
