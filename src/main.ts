@@ -1,4 +1,5 @@
 // import * as $ from 'jquery';
+import {config} from './config'
 
 const app_name = 'travian-auto';
 
@@ -132,7 +133,14 @@ function init() {
   }
   runTime[app_name] = true;
   set(app_name, AppStatus.init);
-  setTimeout(loop);
+
+  /* for debug from console manually */
+  let url = 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js';
+  let script = document.createElement('script');
+  script.src = url;
+  script.onload = loop;
+  document.head.appendChild(script);
+
   console.log('end init');
 }
 
@@ -211,6 +219,8 @@ module Tasks {
   findTask.type = TaskType.find_task;
   findTask.run = (cb)=> {
     console.log('find task');
+    /* check for login */
+    $('.account').find('input').val(config.username);
     // check_building_list.runAll(cb);
   };
 

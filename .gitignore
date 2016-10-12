@@ -13,3 +13,4 @@ dist/
 build/
 lib/
 .quick-deploy
+npm-debug.log*
