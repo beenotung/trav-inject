@@ -120,13 +120,10 @@ enum AppStatus{
   init, upgrade, ready
 }
 
-declare let runTime: any;
+let runTime: any = eval('runTime||{}');
 
 function init() {
   console.log('begin init');
-  if (!isDefined(window[<number><any>'runTime'])) {
-    window[<number><any>'runTime'] = <Window>{}
-  }
   if (runTime[app_name] && false) {
     console.warn(app_name + ' already running, reload the page to stop the previous instance');
     return;
@@ -219,8 +216,15 @@ module Tasks {
   findTask.type = TaskType.find_task;
   findTask.run = (cb)=> {
     console.log('find task');
+
     /* check for login */
-    $('.account').find('input').val(config.username);
+    if ($('.loginTable').length > 0) {
+      $('.account').find('input').val(config.username);
+      $('.pass').find('input').val(config.password);
+      $('[type=submit]').click();
+      return;
+    }
+
     // check_building_list.runAll(cb);
   };
 

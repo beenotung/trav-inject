@@ -14,3 +14,4 @@ build/
 lib/
 .quick-deploy
 npm-debug.log*
+src/config.ts
