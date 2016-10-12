@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+
+  },
+  "files": [
+    "src/main.ts"
+    ,"typings/tsd.d.ts"
+  ]
+}
