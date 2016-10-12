@@ -15,16 +15,21 @@ function npm_install_recursive(folder) {
   //   return;
   // }
 
+  var child_folder = path.relative(root, folder);
 
   // Since this script is intended to be run as a "preinstall" command,
   // skip the root folder, because it will be `npm install`ed in the end.
   if (folder !== root && has_package_json) {
     console.log('===================================================================');
-    console.log(`Performing "npm install" inside ${folder === root ? 'root folder' : './' + path.relative(root, folder)}`);
+    console.log(`Performing "npm install" inside ${folder === root ? 'root folder' : './' + child_folder}`);
     console.log('===================================================================');
 
     npm_install(folder)
   }
+
+  // skip dist and build
+  if (child_folder == 'build' || child_folder == 'dist')
+    return;
 
   // skip duplicated install
   if (!(has_package_json && has_install_dep && folder != root)) {
