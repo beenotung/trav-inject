@@ -12,3 +12,4 @@ typings/
 dist/
 build/
 lib/
+.quick-deploy
