@@ -1,4 +1,4 @@
-import * as $ from 'jquery';
+// import * as $ from 'jquery';
 
 const app_name = 'travian-auto';
 
@@ -51,6 +51,10 @@ class Optional<A> {
         return this.value != void 0 && this.value != null;
     };
 
+    isEmpty() {
+        return !this.isDefined();
+    }
+
     toArray() {
         if (this.isDefined()) {
             return [this.value];
@@ -69,9 +73,23 @@ class Optional<A> {
     forEach(f: (a: A)=>void) {
         this.toArray().forEach(x=>f(x));
     }
+
+    useOrElse(f: (a: A)=>void, g: ()=>void) {
+        if (this.isDefined())
+            f(this.value);
+        else
+            g();
+    }
 }
 function some<A>(x: A): Optional<A> {
     return new Optional<A>(x);
+}
+function someFromArray<A>(xs: A[]): Optional<A> {
+    if (xs.length == 0)
+        return none<A>();
+    else if (xs.length == 1)
+        return some<A>(xs[0]);
+    else throw new Error('more than one value');
 }
 function none<A>(): Optional<A> {
     return new Optional<A>(void 0);
@@ -85,21 +103,37 @@ function newId(): number {
     set(Storage.lastUid, res);
     return res;
 }
+function getQueryVar(name: string): string[] {
+    return location.search.substring(1)
+        .split('&')
+        .map(s=>s
+            .split('=')
+            .map(decodeURIComponent)
+        )
+        .filter(p=>p[0] == name)
+        .map(p=>p[1])
+}
 /* -------------------- end utils ----------------------*/
 
 enum AppStatus{
     init, upgrade, ready
 }
 
+declare let runTime: any;
+
 function init() {
     console.log('begin init');
-    if (has(app_name)) {
-        set(app_name, AppStatus.upgrade);
-    } else {
-        set(app_name, AppStatus.init);
+    if (typeof runTime !== 'object') {
+        runTime = {};
     }
+    if (runTime[app_name] && false) {
+        console.warn(app_name + ' already running, reload the page to stop the previous instance');
+        return;
+    }
+    runTime[app_name] = true;
+    set(app_name, AppStatus.init);
     setTimeout(loop);
-    console.log('end init')
+    console.log('end init');
 }
 
 enum TaskType{
@@ -108,6 +142,7 @@ enum TaskType{
     check_resource,
     find_upgrade_farm,
     upgrade_farm,
+    trade,
 }
 
 enum Storage{
@@ -116,37 +151,27 @@ enum Storage{
     lastUid,
     task_map
 }
-
 class Task {
+    pathname: string;
     id: number;
     type: TaskType;
 
     nextTask: Optional<Task>;
 
     run(callback: Function) {
-        switch (this.type) {
-            case TaskType.find_task: {
-                let next = new Task();
-                this.nextTask = new Optional<Task>(next);
-                next.type = TaskType.check_building_list;
-                break;
-            }
-            case TaskType.check_building_list: {
-                console.log('check building_list');
-                break;
-            }
-            case TaskType.check_resource: {
-                console.log('check resource');
-                break;
-            }
-            default: {
+        let res = someFromArray(Tasks.list
+            .filter(x=>x.type == this.type));
+        res.useOrElse(
+            t=>t.run(callback)
+            , ()=> {
                 console.error('not impl', this);
+                throw new Error('Task type not registered')
             }
-        }
-        callback();
+        );
     }
 
     runAll(callback: Function) {
+        console.log('run task', this);
         this.run(()=> {
             this.nextTask.forEach(x=>x.runAll(callback));
         });
@@ -168,16 +193,51 @@ class Task {
         set(this.id, this);
     }
 
-    remote() {
-        localStorage.removeItem(this.id);
+    remove() {
+        localStorage.removeItem(this.id + "");
     }
 
     static load(id: number): Task {
-        return get(id, ()=> {
+        return new Task(get(id, ()=> {
             throw new Error("Task-" + id + " not found!")
-        })
+        }));
     }
 }
+module Tasks {
+    export const list: Task[] = [];
+
+    export const findTask = new Task();
+    list.push(findTask);
+    findTask.type = TaskType.find_task;
+    findTask.run = (cb)=> {
+        console.log('find task');
+        // check_building_list.runAll(cb);
+    };
+
+    export const trade = new Task();
+    list.push(trade);
+    trade.type = TaskType.trade;
+    trade.pathname = "/hero_auction.php";
+    trade.run = ()=> {
+
+    };
+
+    export const check_building_list = new Task();
+    list.push(check_building_list);
+    check_building_list.type = TaskType.check_building_list;
+    trade.run = (cb)=> {
+        if (location.pathname != '/dorf1.php' && location.pathname != '/dorf2.php') {
+            location.replace('/dorf1.php');
+            cb();
+        }
+        let res = $('.buildingList')
+                .find('.buildDuration')
+                .val()
+            ;
+        console.log(res);
+    };
+}
+
 
 /* -------------- begin task id stack ------------ */
 function getStack() {
@@ -200,22 +260,16 @@ function popStack() {
 /* -------------- end task id stack ------------ */
 
 function loop() {
-    let find_task = new Task();
-    find_task.id = newId();
-    find_task.type = TaskType.find_task;
-    find_task.store();
-    // let stack: number[] = getOrSetDefault(Storage.taskid_stack, ()=>[find_task.id]);
-
     function next() {
         let task_id = last(getStack());
         if (!isDefined(task_id)) {
             console.log('no task');
-            pushStack(find_task.id);
+            task_id = Tasks.findTask.id;
+            pushStack(task_id);
         }
         let task = Task.load(task_id);
         task.runAll(()=> {
-            stack.pop();
-            set(Storage.taskid_stack, stack);
+            popStack();
             setTimeout(next);
         });
     }

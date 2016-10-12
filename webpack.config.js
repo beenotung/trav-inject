@@ -4,11 +4,11 @@ module.exports = {
         filename: './out/bundle.js'
     },
     resolve: {
-        extensions: ['', '.webpack,js', '.web.js', '.ts', '.js']
+        extensions: ['', '.webpack.js', '.web.js', '.ts', '.js','.tsx']
     },
     module: {
         loaders: [
-            {test: /\.ts$/, loader: 'ts-loader'}
+            {test: /\.ts$/, loader: 'webpack-typescript?target=ES5'}
         ]
     }
 }
