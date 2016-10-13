@@ -1,4 +1,6 @@
 import {defer} from '../lib/jslib/es6/dist/es6/src/utils-es6';
+import {log} from "typings/dist/support/cli";
+import {config} from "./config";
 const expire_period = 10000;
 /* 10 second */
 namespace ItemKeys {
@@ -66,19 +68,49 @@ class Item<A> {
 }
 function init() {
   console.log('begin init');
-  setTimeout(findTask);
+  if (typeof jQuery === 'undefined') {
+    let s = document.createElement('script');
+    s.src = 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js';
+    s.onload = main;
+    document.head.appendChild(s);
+  } else {
+    setTimeout(main);
+  }
   console.log('end init');
 }
 init();
 
+function isInPage(...filenames: string[]) {
+  return filenames.some(filename=>location.pathname == '/' + filename);
+}
 class BuildingTask {
 }
 function find_building_task_list(cb: Function) {
   console.log('find building task list');
-  let res = new Item<BuildingTask[]>();
-  res.data = [];
-  store(ItemKeys.building_task_list, res);
-  cb();
+  if (isInPage('dorf1.php', 'dorf2.php')) {
+    let res = new Item<BuildingTask[]>();
+    res.data = [];
+    store(ItemKeys.building_task_list, res);
+    cb();
+  } else {
+    location.replace('dorf1.php')
+  }
+}
+
+function main() {
+  login() && setTimeout(findTask);
+}
+
+function login(): boolean {
+  let res = $('.loginBox');
+  console.log('check login', res.length);
+  if (res.length == 0) {
+    return true;
+  }
+  res.find('.account').find('input').val(config.username);
+  res.find('.pass').find('input').val(config.password);
+  res.find('[type=submit]').click();
+  return false;
 }
 
 function findTask() {

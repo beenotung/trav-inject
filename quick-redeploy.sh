@@ -1,4 +1,7 @@
 #!/bin/bash
+if [ ! -d node_modules ]; then
+  npm install
+fi
 if [ ! -f .quick-deploy ]; then
   touch .quick-deploy
   npm run dev &
