@@ -1,4 +1,4 @@
-# webseed
+# travian-inject
 seed project for web (typescript + babel + sass)
 
 ## env dep (os package)
@@ -25,3 +25,6 @@ seed project for web (typescript + babel + sass)
 1. watch the build targets (html; scss, css; ts, js) separately
 2. fire up compile task separately
 3. trigger reload after compile complete
+
+## usage
+copy the dist/bundle.js into console on travian page
