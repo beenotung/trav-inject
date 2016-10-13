@@ -8,6 +8,7 @@ namespace ItemKeys {
   export const lastid = 'lastid';
   export const building_task_list = 'building_task_list';
   export const farm_info = 'farm_info';
+  export const hero_advance_info = 'hero_advance_info';
   export const quest_info = 'quest_info';
 }
 
@@ -163,7 +164,38 @@ function find_farm_info(cb: Function) {
     location.replace('dorf1.php');
   }
 }
-
+namespace HeroStatus {
+  export const in_home = 'in_home';
+}
+class HeroAdvanceInfo {
+  numberOfAdvance: number;
+  heroStatus: string;
+}
+function find_hero_advance_info(cb: Function) {
+  const $ = jQuery;
+  console.log('find hero advance info');
+  let res = new Item<HeroAdvanceInfo>();
+  res.data = new HeroAdvanceInfo();
+  /* find status */
+  var $heroStatusMessage = $('.heroStatusMessage');
+  var statusClass = $heroStatusMessage
+    .find('img')
+    .attr('class');
+  switch (statusClass) {
+    case 'heroStatus100':
+      res.data.heroStatus = HeroStatus.in_home;
+      break;
+    default:
+      throw new Error('not identifiable hero status <' + statusClass + '> : ' + $heroStatusMessage.text())
+  }
+  /* find number of advance */
+  res.data.numberOfAdvance = $('.adventureWhite')
+    .find('.speechBubbleContent')
+    .val();
+  console.log('hero advance info', res.data);
+  store(ItemKeys.hero_advance_info, res);
+  cb();
+}
 function find_quest_info(cb: Function) {
   const $ = jQuery;
   console.log('find quest info');
@@ -208,6 +240,8 @@ function findTask() {
         return find_building_task_list(findTask);
       case ItemKeys.farm_info:
         return find_farm_info(findTask);
+      case ItemKeys.hero_advance_info:
+        return find_hero_advance_info(findTask);
       case ItemKeys.quest_info:
         return find_quest_info(findTask);
       default:
