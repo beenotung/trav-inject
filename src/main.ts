@@ -1,294 +1,106 @@
-// import * as $ from 'jquery';
-import {config} from './config'
-
-const app_name = 'travian-auto';
-
-/* -------------------- begin utils ----------------------*/
-function has(name: any) {
-  let x = localStorage[JSON.stringify(name)];
-  return x != void 0 && x != null;
+import {defer} from '../lib/jslib/es6/dist/es6/src/utils-es6';
+const expire_period = 10000;
+/* 10 second */
+namespace ItemKeys {
+  export const lastid = 'lastid';
+  export const building_task_list = 'building_task_list';
 }
-function set(name: any, value: any) {
-  localStorage[JSON.stringify(name)] = JSON.stringify(value);
+function isDefined(o: any) {
+  return !(typeof o === 'undefined' || o == null);
 }
-function get<A>(name: any, fallback: ()=>A): A {
-  if (has(name)) {
-    try {
-      return JSON.parse(localStorage[JSON.stringify(name)]);
-    } catch (e) {
-      return fallback();
-    }
-  }
-  else {
+function notDefined(o: any) {
+  return (typeof o === 'undefined' || o == null);
+}
+function id<A>(a: A): ()=>A {
+  return ()=>a;
+}
+function has(key: string) {
+  return isDefined(localStorage[key]);
+}
+function getOrElse<A>(key: string, fallback: ()=>A) {
+  if (has(key))
+    return JSON.parse(localStorage[key]);
+  else
     return fallback();
-  }
 }
-function getOrSetDefault<A>(name: any, fallback: ()=>A): A {
-  if (has(name)) {
-    return get(name, fallback);
-  } else {
-    let v = fallback();
-    set(name, v);
-    return v;
-  }
-}
-function last<A>(xs: A[]) {
-  return xs[xs.length - 1];
-}
-function isDefined(x: any) {
-  return x != void 0 && x != null;
-}
-function noDefined(x: any) {
-  return !isDefined(x);
-}
-class Optional<A> {
-  value: A;
-
-  constructor(x?: any) {
-    this.value = x;
-  }
-
-  isDefined() {
-    return this.value != void 0 && this.value != null;
-  };
-
-  isEmpty() {
-    return !this.isDefined();
-  }
-
-  toArray() {
-    if (this.isDefined()) {
-      return [this.value];
-    } else {
-      return [];
-    }
-  }
-
-  map<B>(f: (a: A)=>B) {
-    if (this.isDefined())
-      return new Optional(this.toArray().map(x=>f(x)));
-    else
-      return <Optional<B>><any><Optional<A>>this;
-  }
-
-  forEach(f: (a: A)=>void) {
-    this.toArray().forEach(x=>f(x));
-  }
-
-  useOrElse(f: (a: A)=>void, g: ()=>void) {
-    if (this.isDefined())
-      f(this.value);
-    else
-      g();
-  }
-}
-function some<A>(x: A): Optional<A> {
-  return new Optional<A>(x);
-}
-function someFromArray<A>(xs: A[]): Optional<A> {
-  if (xs.length == 0)
-    return none<A>();
-  else if (xs.length == 1)
-    return some<A>(xs[0]);
-  else throw new Error('more than one value');
-}
-function none<A>(): Optional<A> {
-  return new Optional<A>(void 0);
-}
-function wrap<A>(x: A) {
-  return ()=>x;
+function store(key: string, value: any) {
+  localStorage[key] = JSON.stringify(value);
 }
 function newId(): number {
-  let lastUid = get(StorageKey.lastUid, wrap(0));
-  let res = lastUid + 1;
-  set(StorageKey.lastUid, res);
-  return res;
+  let last = getOrElse(ItemKeys.lastid, id(0));
+  store(ItemKeys.lastid, last + 1);
+  return last + 1;
 }
-function getQueryVar(name: string): string[] {
-  return location.search.substring(1)
-    .split('&')
-    .map(s=>s
-      .split('=')
-      .map(decodeURIComponent)
-    )
-    .filter(p=>p[0] == name)
-    .map(p=>p[1])
-}
-/* -------------------- end utils ----------------------*/
-
-enum AppStatus{
-  init, upgrade, ready
-}
-
-let runTime: any = eval('runTime||{}');
-
-function init() {
-  console.log('begin init');
-  if (runTime[app_name] && false) {
-    console.warn(app_name + ' already running, reload the page to stop the previous instance');
-    return;
-  }
-  runTime[app_name] = true;
-  set(app_name, AppStatus.init);
-
-  /* for debug from console manually */
-  let url = 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js';
-  let script = document.createElement('script');
-  script.src = url;
-  script.onload = loop;
-  document.head.appendChild(script);
-
-  console.log('end init');
-}
-
-enum TaskType{
-  find_task,
-  check_building_list,
-  check_resource,
-  find_upgrade_farm,
-  upgrade_farm,
-  trade,
-}
-
-enum StorageKey{
-  taskid_stack,
-  resource,
-  lastUid,
-  task_map
-}
-class Task {
-  pathname: string;
+class Item<A> {
+  name: string;
   id: number;
-  type: TaskType;
-
-  nextTask: Optional<Task>;
-
-  run(callback: Function) {
-    let res = someFromArray(Tasks.list
-      .filter(x=>x.type == this.type));
-    res.useOrElse(
-      t=>t.run(callback)
-      , ()=> {
-        console.error('not impl', this);
-        throw new Error('Task type not registered')
-      }
-    );
-  }
-
-  runAll(callback: Function) {
-    console.log('run task', this);
-    this.run(()=> {
-      this.nextTask.forEach(x=>x.runAll(callback));
-    });
-  }
+  createTime: number;
+  data: A;
+  expire_period = expire_period;
+  expire_date: number;
 
   constructor(data?: any) {
     Object.assign(this, data);
-    if (!isDefined(this.id)) {
+    if (notDefined(this.id)) {
       this.id = newId();
     }
-    if (this.nextTask) {
-      Object.setPrototypeOf(this.nextTask, Optional.prototype);
-    } else {
-      this.nextTask = new Optional<Task>();
+    if (notDefined(this.createTime)) {
+      this.createTime = Date.now();
+    }
+    if (notDefined(this.expire_date)) {
+      this.expire_date = this.createTime + this.expire_period;
     }
   }
 
   store() {
-    set(this.id, this);
+    store(this.name, this)
   }
 
-  remove() {
-    localStorage.removeItem(this.id + "");
-  }
-
-  static load(id: number): Task {
-    return new Task(get(id, ()=> {
-      throw new Error("Task-" + id + " not found!")
-    }));
-  }
-}
-module Tasks {
-  export const list: Task[] = [];
-
-  export const findTask = new Task();
-  list.push(findTask);
-  findTask.type = TaskType.find_task;
-  findTask.run = (cb)=> {
-    console.log('find task');
-
-    /* check for login */
-    if ($('.loginTable').length > 0) {
-      $('.account').find('input').val(config.username);
-      $('.pass').find('input').val(config.password);
-      $('[type=submit]').click();
-      return;
-    }
-
-    // check_building_list.runAll(cb);
-  };
-
-  export const trade = new Task();
-  list.push(trade);
-  trade.type = TaskType.trade;
-  trade.pathname = "/hero_auction.php";
-  trade.run = ()=> {
-
-  };
-
-  export const check_building_list = new Task();
-  list.push(check_building_list);
-  check_building_list.type = TaskType.check_building_list;
-  trade.run = (cb)=> {
-    if (location.pathname != '/dorf1.php' && location.pathname != '/dorf2.php') {
-      location.replace('/dorf1.php');
-      cb();
-    }
-    let res = $('.buildingList')
-        .find('.buildDuration')
-        .val()
-      ;
-    console.log(res);
-  };
-}
-
-
-/* -------------- begin task id stack ------------ */
-function getStack() {
-  return get(StorageKey.taskid_stack, ()=>[]);
-}
-function storeStack(xs: number[]) {
-  set(StorageKey.taskid_stack, xs);
-}
-function pushStack(id: number) {
-  let xs = getStack();
-  xs.push(id);
-  storeStack(xs);
-}
-function popStack() {
-  let xs = getStack();
-  let res = xs.pop();
-  storeStack(xs);
-  return res;
-}
-/* -------------- end task id stack ------------ */
-
-function loop() {
-  function next() {
-    let task_id = last(getStack());
-    if (!isDefined(task_id)) {
-      console.log('no task');
-      task_id = Tasks.findTask.id;
-      pushStack(task_id);
-    }
-    let task = Task.load(task_id);
-    task.runAll(()=> {
-      popStack();
-      setTimeout(next);
+  static load<A>(name: string, prototype: any): Item<A> {
+    let x = getOrElse(name, ()=> {
+      throw new Error('Item ' + name + ' not found')
     });
+    Object.setPrototypeOf(x, prototype);
+    return x;
   }
+}
+function init() {
+  console.log('begin init');
+  setTimeout(findTask);
+  console.log('end init');
+}
+init();
 
-  setTimeout(next)
+class BuildingTask {
+}
+function find_building_task_list(cb: Function) {
+  console.log('find building task list');
+  let res = new Item<BuildingTask[]>();
+  res.data = [];
+  store(ItemKeys.building_task_list, res);
+  cb();
 }
 
-init();
+function findTask() {
+  console.log('find task');
+  let xs: string[] = Object.keys(ItemKeys)
+      .filter(x=>x != ItemKeys.lastid)
+      .filter(x=> {
+        return !has(x) || (
+            Item.load(x, Item.prototype).expire_date < Date.now()
+          );
+      })
+    ;
+  if (xs.length == 0) {
+    console.log('no task');
+  } else {
+    let name: string = xs[0];
+    switch (name) {
+      case ItemKeys.building_task_list:
+        find_building_task_list(findTask);
+        return;
+      default:
+        console.error('not impl', name);
+    }
+  }
+}
