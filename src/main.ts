@@ -8,12 +8,13 @@ namespace ItemKeys {
   export const lastid = 'lastid';
   export const building_task_list = 'building_task_list';
   export const farm_info = 'farm_info';
+  export const production_info = 'production_info';
   export const hero_advance_info = 'hero_advance_info';
-  export const quest_info = 'quest_info';
+  // export const quest_info = 'quest_info';
 }
 
 /* 10 second */
-const expire_period = 10000;
+const default_expire_period = 10000;
 
 function isDefined(o: any) {
   return !(typeof o === 'undefined' || o == null);
@@ -49,12 +50,37 @@ function newId(): number {
   return last + 1;
 }
 
+function last<A>(xs: A[]): A {
+  return xs[xs.length - 1];
+}
+
+function str_to_int(s: string): number {
+  return +s.split('').filter(x=>
+    x == '0'
+    || x == '1'
+    || x == '2'
+    || x == '3'
+    || x == '4'
+    || x == '5'
+    || x == '6'
+    || x == '7'
+    || x == '8'
+    || x == '9'
+    || x == ','
+  ).reduce((acc, c)=> {
+    if (c == ',')
+      return acc;
+    else
+      return acc + c;
+  });
+}
+
 class Item<A> {
   name: string;
   id: number;
   createTime: number;
   data: A;
-  expire_period = expire_period;
+  expire_period: number;
   expire_date: number;
 
   constructor(data?: any) {
@@ -64,6 +90,9 @@ class Item<A> {
     }
     if (notDefined(this.createTime)) {
       this.createTime = Date.now();
+    }
+    if (notDefined(this.expire_period)) {
+      this.expire_period = default_expire_period;
     }
     if (notDefined(this.expire_date)) {
       this.expire_date = this.createTime + this.expire_period;
@@ -131,17 +160,25 @@ function find_building_task_list(cb: Function) {
       res.expire_period = res.data.map(x=>x.buildDuration).reduce((acc, c)=>Math.max(acc, c));
       res.expire_date = res.data.map(x=>x.finishTime).reduce((acc, c)=>Math.max(acc, c));
     }
-    console.log('building task list', res.data);
+    // console.log('building task list', res.data);
     store(ItemKeys.building_task_list, res);
     cb();
   } else {
     location.replace('dorf1.php')
   }
 }
-
 class Farm {
+  id: number;
   name: string;
   level: number;
+  /* 1..4 */
+  farm_type: number;
+  not_now: boolean;
+  under_construct: boolean;
+
+  pathname() {
+    return 'build.php?id=' + this.id;
+  }
 }
 
 function find_farm_info(cb: Function) {
@@ -158,12 +195,64 @@ function find_farm_info(cb: Function) {
         return res;
       })
       .toArray();
+    jQuery('#village_map').find('.level')
+      .each((i, e)=> {
+        let $e = $(e);
+        var classStr = $e.attr('class');
+        let level = last(classStr.split('level'));
+        if (+level != res.data[i].level) {
+          throw new Error('farm not matching');
+        }
+        res.data[i].not_now = classStr.includes('notNow');
+        res.data[i].under_construct = classStr.includes('underConstruction');
+        res.data[i].farm_type = classStr.split(' ').filter(x=>x.includes('gid')).map(x=>+x.replace('gid', ''))[0];
+      });
     console.log('farms', res.data);
     store(ItemKeys.farm_info, res);
+    cb();
   } else {
     location.replace('dorf1.php');
   }
 }
+class ProductionInfo {
+  warehouse_size: number;
+  granary_size: number;
+  produce_rate: number[];
+  amount: number[];
+  storage_capacity: number[];
+}
+function find_production_info(cb: Function) {
+  console.log('find production info');
+  const $ = jQuery;
+  let res = new ProductionInfo();
+  if (isInPage('dorf1.php')) {
+    res.produce_rate = jQuery('table#production').find('td.num')
+      .map((i, e)=> {
+        return str_to_int($(e).text());
+      })
+      .toArray();
+    let stocks = $('.stock')
+      .map((i, e)=>str_to_int($(e).text()))
+      .toArray();
+    res.warehouse_size = stocks[0];
+    res.granary_size = stocks[1];
+    res.storage_capacity = [
+      res.warehouse_size
+      , res.warehouse_size
+      , res.warehouse_size
+      , res.granary_size
+    ];
+    res.amount = jQuery('#stockBar').find('.stockBarButton').find('span')
+      .map((i, e)=>str_to_int($(e).text()))
+      .toArray();
+    let item = new Item<ProductionInfo>();
+    item.data = res;
+    store(ItemKeys.production_info, item);
+  } else {
+    location.replace('dorf1.php');
+  }
+}
+
 namespace HeroStatus {
   export const in_home = 'in_home';
 }
@@ -196,6 +285,7 @@ function find_hero_advance_info(cb: Function) {
   store(ItemKeys.hero_advance_info, res);
   cb();
 }
+
 function find_quest_info(cb: Function) {
   const $ = jQuery;
   console.log('find quest info');
@@ -235,15 +325,18 @@ function findTask() {
     console.log('no task');
   } else {
     let name: string = xs[0];
+    console.log('found task', name);
     switch (name) {
       case ItemKeys.building_task_list:
         return find_building_task_list(findTask);
       case ItemKeys.farm_info:
         return find_farm_info(findTask);
+      case ItemKeys.production_info:
+        return find_production_info(findTask);
       case ItemKeys.hero_advance_info:
         return find_hero_advance_info(findTask);
-      case ItemKeys.quest_info:
-        return find_quest_info(findTask);
+      // case ItemKeys.quest_info:
+      //   return find_quest_info(findTask);
       default:
         console.error('not impl', name);
     }
