@@ -37,9 +37,15 @@ However, you will have to paste the javascript code into console everytime the p
 4. Enable the script from the tampermonkey icon (in Chrome, the extension icon should be in top right bar)
 
 ## Feature Todo List
- - [x] Auto upgrade 'farm' (4 types of resources producer, not just crop)
-       According to 'time reminds to full'
+ - [x] Auto upgrade 'farms' (4 types of resources producer, not just crop)
+    - [x] According to 'time reminds to full'
+    - [x] Support if VIP is available (pending building task) (not tested)
  - [ ] Auto upgarde facilities (inner village buildings)
+ - [ ] Auto train army
  - [ ] Auto send army
  - [ ] Auto find sheep-like villages
  - [ ] Auto find places for new villages
+ - [ ] Auto trade (hero_auction)
+ - [ ] Auto trade
+    - [ ] Balance resource within self villages
+    - [ ] To Alliance on excess resources
