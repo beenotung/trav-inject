@@ -133,7 +133,7 @@ class Item<A> {
     store(this.name, this)
   }
 
-  static load<A>(name: string, prototype?: any): Item<A> {
+  static load<A>(name: string, prototype?: any, isArray = false): Item<A> {
     let error = new Error('Item ' + name + ' not found');
     let item = getOrElse<A>(name, ()=> {
       console.error(error);
@@ -148,8 +148,14 @@ class Item<A> {
       item.name = name;
     }
     Object.setPrototypeOf(item, Item.prototype);
-    if (prototype)
-      Object.setPrototypeOf(item.data, prototype);
+    if (prototype) {
+      if (isArray) {
+        Object.setPrototypeOf(item.data, Array.prototype);
+        (<any[]><any>item.data).forEach(x=>Object.setPrototypeOf(x, prototype));
+      } else {
+        Object.setPrototypeOf(item.data, prototype);
+      }
+    }
     console.log('loaded Item', item);
     return item;
   }
@@ -444,7 +450,7 @@ function findTask() {
 function find_build_target_farm(cb: Function) {
   const $ = jQuery;
   console.log('find_build_target_farm');
-  var buildingTasksItem = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype);
+  var buildingTasksItem = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype, true);
   let buildingTasks: BuildingTask[] = buildingTasksItem.data;
   let farms: Farm[] = Item.load<Farm[]>(ItemKeys.farm_info).data.filter((farm: Farm)=>!farm.not_now);
   let production_info: ProductionInfo = Item.load<ProductionInfo>(ItemKeys.production_info, ProductionInfo.prototype).data;
@@ -477,6 +483,7 @@ function find_build_target_farm(cb: Function) {
     console.log('no farm available to upgrade');
     item.data = new Farm();
     item.data.id = -1;
+    console.log('buildingTasks', buildingTasks);
     if (buildingTasks.length > 0)
       item.expire_date = buildingTasks.reduce((acc, c)=> {
         if (acc.finishTime > c.finishTime)
