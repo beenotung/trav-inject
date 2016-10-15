@@ -15,8 +15,8 @@ Trav*** web-based game tool
 | Safari | >= 5 |
 | Firefox | >= 46 |
 | Opera Next | >= 15 |
-| Dolphin Browser (Android | >= 4.0.3) |
-| UC Browser (Android | >= 4.0.3) |
+| Dolphin Browser | (Android >= 4.0.3) |
+| UC Browser | (Android >= 4.0.3) |
 *Only tested on Chrome*
 ### Without tampermonkey
 Any Browser that support Javascript (the official Trav*** requirement include Javascript anyway...).
