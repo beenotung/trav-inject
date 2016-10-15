@@ -1,30 +1,34 @@
-# travian-inject
-seed project for web (typescript + babel + sass)
+# trav-inject
+##### Browser based automater, Truely cross platform
+Trav*** web-based game tool
 
-## env dep (os package)
+## Compile-time dependency
  - git
  - npm
 
-## script
- - install.sh
-    - default
-        install npm local packages
-    - --full-install
-        install npm global packages and local packages
+## Runtime dependency
+### With tampermonkey
+| Browser | Version Requirement |
+|---|---|
+| Chrome | >= 31 |
+| Microsoft Edge | >= 14 |
+| Safari | >= 5 |
+| Firefox | >= 46 |
+| Opera Next | >= 15 |
+| Dolphin Browser (Android | >= 4.0.3) |
+| UC Browser (Android | >= 4.0.3) |
+*Only tested on Chrome*
+### Without tampermonkey
+Any Browser that support Javascript (the official Trav*** requirement include Javascript anyway...).
+However, you will have to paste the javascript code into console everytime the page switch or reload... which is a big pain, therefore recommend to use tampermonkey or other equivalent tools
 
-## build flow
- - compile script
-    1. compile typescript to ES6
-    2. compile ES6 js to ES5
- - compile stylesheet
-    1. compile scss to css
- - update html
-    1. update library path (update relative path from root to dist)
+## Build
+ - run `./quick-deploy.sh`
+   the built version should be copied to (X11) system clipboard (this feature is supported only on Linux currently)
 
-## watch flow
-1. watch the build targets (html; scss, css; ts, js) separately
-2. fire up compile task separately
-3. trigger reload after compile complete
-
-## usage
-copy the dist/bundle.js into console on travian page
+## Installation
+1. install [tampermonkey](http://tampermonkey.net/) in your browser
+2. add the built script as userscript
+3. add user includes `http://tx3.trav***.tw/*` in the settings page
+   replace the url for your world if needed
+4. enable the script from the tampermonkey icon (in Chrome, the extension icon should be in top right bar)
