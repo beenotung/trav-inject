@@ -17,7 +17,7 @@ namespace ItemKeys {
 }
 
 /* time to refetch the Item from webpage into localStorage */
-const default_expire_period = 1000 * 30;
+const default_expire_period = 1000 * 30 * 60;
 
 function isDefined(o: any) {
   return !(typeof o === 'undefined' || o == null);
@@ -134,18 +134,22 @@ class Item<A> {
   }
 
   static load<A>(name: string, prototype?: any): Item<A> {
+    let error = new Error('Item ' + name + ' not found');
     let item = getOrElse<A>(name, ()=> {
-      let error = new Error('Item ' + name + ' not found');
       console.error(error);
       /* cannot just throw the Error, webpack-typescript cannot understand this :( */
       return null;
     });
+    if (item == null) {
+      throw error;
+    }
     if (item.name != name) {
       console.warn('loading item, but name does not match, overriding item name');
       item.name = name;
     }
+    Object.setPrototypeOf(item, Item.prototype);
     if (prototype)
-      Object.setPrototypeOf(item, prototype);
+      Object.setPrototypeOf(item.data, prototype);
     console.log('loaded Item', item);
     return item;
   }
@@ -369,6 +373,7 @@ function exec_hero_advance_info(cb: Function) {
     }
   } else {
     console.log('hero cannot move, skip');
+    setTimeout(cb);
   }
   res.store();
 }
@@ -404,7 +409,7 @@ function findTask() {
       .filter(x=>x != ItemKeys.lastid)
       .filter(x=> {
         return !has(x) || (
-            Item.load(x, Item.prototype).expire_date < Date.now()
+            Item.load(x).expire_date < Date.now()
           );
       })
     ;
@@ -491,18 +496,21 @@ function find_build_target_farm(cb: Function) {
 
 function exec_build_target_farm(cb: Function) {
   console.log('exec_build_target_farm');
-  let farm: Farm = Item.load<Farm>(ItemKeys.build_target_farm, Farm.prototype).data;
-  let item = new Item<Farm>();
-  item.data = farm;
+  var srcItem = Item.load<Farm>(ItemKeys.build_target_farm, Farm.prototype);
+  let farm: Farm = srcItem.data;
+  let resItem = new Item<Farm>();
+  resItem.data = farm;
   if (farm.id == -1) {
     console.log('no available farm to upgrade ');
-    item.expire_date = Item.load<BuildingTask[]>(ItemKeys.building_task_list).data
+    resItem.expire_date = Item.load<BuildingTask[]>(ItemKeys.building_task_list).data
       .reduce((acc, c)=> {
         if (acc.finishTime > c.finishTime)
           return c;
         else
           return acc;
       }).finishTime;
+    store(ItemKeys.exec_build_target_farm, resItem);
+    cb();
   } else {
     Object.setPrototypeOf(farm, Farm.prototype);
     console.log('check if in building page');
@@ -516,11 +524,11 @@ function exec_build_target_farm(cb: Function) {
     let container = jQuery('.showBuildCosts.normal');
     let times = container.find('span').text().split(':').map(str_to_int);
     let time = (times[0] * 3600 + times[1] * 60 + times[2]) * 1000;
-    item.expire_period = time;
-    item.expire_date = Date.now() + time + 1000 * Random.nextInt(5, 5);
-    setTimeout(()=>container.find('button').click(), Random.nextInt(2000, 1000));
+    resItem.expire_period = time;
+    resItem.expire_date = Date.now() + time + 1000 * Random.nextInt(5, 5);
+    srcItem.expire_date = -1;
+    srcItem.store();
+    store(ItemKeys.exec_build_target_farm, resItem);
+    setTimeout(()=> container.find('button').click(), Random.nextInt(2000, 1000));
   }
-  store(ItemKeys.exec_build_target_farm, item);
-  setTimeout(findTask, item.expire_date + 200);
-  cb();
 }
