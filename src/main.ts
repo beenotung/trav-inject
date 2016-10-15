@@ -1,6 +1,6 @@
 import {defer} from '../lib/jslib/es6/dist/es6/src/utils-es6';
 import {config} from './config';
-import {isNumber} from '../lib/jslib/es5/dist/utils-es5';
+import {isNumber, Random} from '../lib/jslib/es5/dist/utils-es5';
 
 declare function $(s: string): HTMLCollection;
 
@@ -34,7 +34,7 @@ function has(key: string) {
   return isDefined(localStorage[key]);
 }
 
-function getOrElse<A>(key: string, fallback: ()=>A) {
+function getOrElse<A>(key: string, fallback: ()=>Item<A>): Item<A> {
   if (has(key))
     return JSON.parse(localStorage[key]);
   else
@@ -47,8 +47,10 @@ function store(key: string, value: any) {
 }
 
 function newId(): number {
-  let last = getOrElse(ItemKeys.lastid, id(0));
-  store(ItemKeys.lastid, last + 1);
+  let last = localStorage[ItemKeys.lastid];
+  if (!Number.isInteger(last))
+    last = 0;
+  localStorage[ItemKeys.lastid] = +last + 1;
   return last + 1;
 }
 
@@ -126,11 +128,15 @@ class Item<A> {
     store(this.name, this)
   }
 
-  static load<A>(name: string, prototype: any): Item<A> {
-    let x = getOrElse(name, ()=> {
-      throw new Error('Item ' + name + ' not found')
+  static load<A>(name: string, prototype?: any): Item<A> {
+    let x = getOrElse<A>(name, ()=> {
+      let error = new Error('Item ' + name + ' not found');
+      console.error(error);
+      /* cannot just throw the Error, webpack-typescript cannot understand this :( */
+      return null;
     });
-    Object.setPrototypeOf(x, prototype);
+    if (prototype)
+      Object.setPrototypeOf(x, prototype);
     return x;
   }
 }
@@ -213,6 +219,7 @@ function find_farm_info(cb: Function) {
       .map((i, e)=> {
         let xs = $(e).attr('alt').split(' ');
         let res = new Farm();
+        res.id = i + 1;
         res.name = xs[0];
         res.level = +xs[2];
         return res;
@@ -378,51 +385,81 @@ function findTask() {
 function find_build_target_farm(cb: Function) {
   const $ = jQuery;
   console.log('find_build_target_farm');
-  let buildingTasks: BuildingTask[] = getOrElse(ItemKeys.building_task_list, ()=> {
-    find_building_task_list(find_build_target_farm);
-    throw new Error('building task list not ready');
-  }).data;
-  let farms: Farm[] = getOrElse<Farm[]>(ItemKeys.farm_info, ()=> {
-    find_farm_info(find_build_target_farm);
-    return [];
-  }).data.filter((farm: Farm)=>!farm.not_now);
-  let production_info: ProductionInfo = getOrElse(ItemKeys.production_info, ()=> {
-    find_production_info(find_build_target_farm);
-    throw new Error('production info not ready');
-  }).data;
+  let buildingTasks: BuildingTask[] = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype).data;
+  let farms: Farm[] = Item.load<Farm[]>(ItemKeys.farm_info).data.filter((farm: Farm)=>!farm.not_now);
+  let production_info: ProductionInfo = Item.load<ProductionInfo>(ItemKeys.production_info, ProductionInfo.prototype).data;
   let farmss: {[idx: number]: Farm[]} = groupBy(farm=>farm.farm_type, farms.filter(x=>!x.not_now));
-  let farm = obj_to_array(farmss)
-    .map((e: [string,Farm[]])=>[+e[0], e[1]])
-    .map((e: [number,Farm[]])=> {
-      let farms: Farm[] = e[1];
-      return farms.reduce((acc, c)=> {
-        if (acc.level < c.level)
-          return acc;
-        else
-          return c;
-      })
-    })
-    .reduce((acc, c)=> {
-      if (production_info.time_to_full[acc.farm_type] < production_info.time_to_full[c.farm_type]) {
-        return c;
-      }
-      else {
-        return acc;
-      }
-    });
-  Object.setPrototypeOf(farm, Farm.prototype);
-  console.log('selected farm', farm);
   let item = new Item<Farm>();
-  item.data = farm;
+  try {
+    let farm = obj_to_array(farmss)
+      .map((e: [string,Farm[]])=>[+e[0], e[1]])
+      .map((e: [number,Farm[]])=> {
+        let farms: Farm[] = e[1];
+        return farms.reduce((acc, c)=> {
+          if (acc.level < c.level)
+            return acc;
+          else
+            return c;
+        })
+      })
+      .reduce((acc, c)=> {
+        if (production_info.time_to_full[acc.farm_type] < production_info.time_to_full[c.farm_type]) {
+          return c;
+        }
+        else {
+          return acc;
+        }
+      });
+    Object.setPrototypeOf(farm, Farm.prototype);
+    console.log('selected farm', farm);
+    item.data = farm;
+  } catch (e) {
+    console.log('not farm available to upgrade');
+    item.data = new Farm();
+    item.data.id = -1;
+    item.expire_date = buildingTasks.reduce((acc, c)=> {
+      if (acc.finishTime > c.finishTime)
+        return c;
+      else
+        return acc;
+    }).finishTime;
+  }
   store(ItemKeys.build_target_farm, item);
   cb();
 }
 
 function exec_build_target_farm(cb: Function) {
   console.log('exec_build_target_farm');
-  let farm: Farm = getOrElse(ItemKeys.build_target_farm, ()=> {
-    find_build_target_farm(()=>exec_build_target_farm(cb));
-    throw new Error('build_target_farm not ready');
-  })
-  // TODO
+  let farm: Farm = Item.load<Farm>(ItemKeys.build_target_farm, Farm.prototype).data;
+  let item = new Item<Farm>();
+  item.data = farm;
+  if (farm.id == -1) {
+    console.log('no available farm to upgrade ');
+    item.expire_date = Item.load<BuildingTask[]>(ItemKeys.building_task_list).data
+      .reduce((acc, c)=> {
+        if (acc.finishTime > c.finishTime)
+          return c;
+        else
+          return acc;
+      }).finishTime;
+  } else {
+    Object.setPrototypeOf(farm, Farm.prototype);
+    console.log('check if in building page');
+    if (location.pathname != '/build.php' || location.search != '?id=' + farm.id) {
+      console.log('not in building page', farm.pathname());
+      location.replace(farm.pathname());
+      return;
+    }
+    console.log('already in building page');
+    console.log('going to build', farm.name, 'level', farm.level);
+    let container = jQuery('.showBuildCosts.normal');
+    let times = container.find('span').text().split(':').map(str_to_int);
+    let time = (times[0] * 3600 + times[1] * 60 + times[2]) * 1000;
+    item.expire_period = time;
+    item.expire_date = Date.now() + time + 1000 * Random.nextInt(5, 5);
+    setTimeout(()=>container.find('button').click(), Random.nextInt(2000, 1000));
+  }
+  store(ItemKeys.exec_build_target_farm, item);
+  setTimeout(findTask, item.expire_date + 200);
+  cb();
 }
