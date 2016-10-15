@@ -37,6 +37,7 @@ However, you will have to paste the javascript code into console everytime the p
 4. Enable the script from the tampermonkey icon (in Chrome, the extension icon should be in top right bar)
 
 ## Feature Todo List
+ - [x] Auto send hero to go advanture
  - [x] Auto upgrade 'farms' (4 types of resources producer, not just crop)
     - [x] According to 'time reminds to full'
     - [x] Support if VIP is available (pending building task) (not tested)

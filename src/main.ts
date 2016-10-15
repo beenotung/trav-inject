@@ -10,6 +10,7 @@ namespace ItemKeys {
   export const farm_info = 'farm_info';
   export const production_info = 'production_info';
   export const hero_advance_info = 'hero_advance_info';
+  export const exec_hero_advance_info = 'exec_hero_advance_info';
   export const build_target_farm = 'build_target_farm';
   export const exec_build_target_farm = 'exec_build_target_farm';
   // export const quest_info = 'quest_info';
@@ -133,15 +134,20 @@ class Item<A> {
   }
 
   static load<A>(name: string, prototype?: any): Item<A> {
-    let x = getOrElse<A>(name, ()=> {
+    let item = getOrElse<A>(name, ()=> {
       let error = new Error('Item ' + name + ' not found');
       console.error(error);
       /* cannot just throw the Error, webpack-typescript cannot understand this :( */
       return null;
     });
+    if (item.name != name) {
+      console.warn('loading item, but name does not match, overriding item name');
+      item.name = name;
+    }
     if (prototype)
-      Object.setPrototypeOf(x, prototype);
-    return x;
+      Object.setPrototypeOf(item, prototype);
+    console.log('loaded Item', item);
+    return item;
   }
 }
 function init() {
@@ -184,7 +190,7 @@ function find_building_task_list(cb: Function) {
         let res = new BuildingTask();
         res.buildingName = $(e).find('.name').text().split('\t').filter(x=>x.length > 0)[1];
         res.buildingLevel = $(e).find('.lvl').text().split(' ').filter(isNumber).map(x=>+x)[0];
-        res.buildDuration = +$(e).find('span.timer').attr('value');
+        res.buildDuration = +$(e).find('span.timer').attr('value') * 1000;
         res.finishTime = Date.now() + res.buildDuration;
         // console.log('building task', res);
         return res;
@@ -302,6 +308,7 @@ class HeroAdvanceInfo {
   numberOfAdvance: number;
   heroStatus: string;
 }
+
 function find_hero_advance_info(cb: Function) {
   const $ = jQuery;
   console.log('find hero advance info');
@@ -329,12 +336,41 @@ function find_hero_advance_info(cb: Function) {
       throw new Error('not identifiable hero status <' + statusClass + '> : ' + $heroStatusMessage.text())
   }
   /* find number of advance */
-  res.data.numberOfAdvance = $('.adventureWhite')
+  res.data.numberOfAdvance = +$('.adventureWhite')
     .find('.speechBubbleContent')
-    .val();
+    .text();
   console.log('hero advance info', res.data);
   store(ItemKeys.hero_advance_info, res);
   cb();
+}
+
+function exec_hero_advance_info(cb: Function) {
+  const $ = jQuery;
+  let itemHeroAdvanceInfo = Item.load<HeroAdvanceInfo>(ItemKeys.hero_advance_info);
+  var heroAdvanceInfo = itemHeroAdvanceInfo.data;
+  let res = new Item<number>();
+  res.name = ItemKeys.exec_hero_advance_info;
+  if (heroAdvanceInfo.heroStatus == HeroStatus.in_home && heroAdvanceInfo.numberOfAdvance > 0) {
+    console.log('directing hero to go advance');
+    if (!isInPage('hero_adventure.php', 'start_adventure.php')) {
+      location.replace('/hero_adventure.php');
+      return;
+    } else {
+      if (isInPage('hero_adventure.php')) {
+        let res = jQuery('#adventureListForm').find('tr').find('a.gotoAdventure');
+        console.log('res', res);
+        res[0].click();
+        return;
+      } else {
+        setTimeout(()=> {
+          jQuery('form.adventureSendButton').find('button[type=submit]').click();
+        });
+      }
+    }
+  } else {
+    console.log('hero cannot move, skip');
+  }
+  res.store();
 }
 
 function find_quest_info(cb: Function) {
@@ -386,6 +422,8 @@ function findTask() {
         return find_production_info(findTask);
       case ItemKeys.hero_advance_info:
         return find_hero_advance_info(findTask);
+      case ItemKeys.exec_hero_advance_info:
+        return exec_hero_advance_info(findTask);
       case ItemKeys.build_target_farm:
         return find_build_target_farm(findTask);
       case ItemKeys.exec_build_target_farm:
@@ -401,7 +439,8 @@ function findTask() {
 function find_build_target_farm(cb: Function) {
   const $ = jQuery;
   console.log('find_build_target_farm');
-  let buildingTasks: BuildingTask[] = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype).data;
+  var buildingTasksItem = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype);
+  let buildingTasks: BuildingTask[] = buildingTasksItem.data;
   let farms: Farm[] = Item.load<Farm[]>(ItemKeys.farm_info).data.filter((farm: Farm)=>!farm.not_now);
   let production_info: ProductionInfo = Item.load<ProductionInfo>(ItemKeys.production_info, ProductionInfo.prototype).data;
   let farmss: {[idx: number]: Farm[]} = groupBy(farm=>farm.farm_type, farms.filter(x=>!x.not_now));
@@ -430,15 +469,21 @@ function find_build_target_farm(cb: Function) {
     console.log('selected farm', farm);
     item.data = farm;
   } catch (e) {
-    console.log('not farm available to upgrade');
+    console.log('no farm available to upgrade');
     item.data = new Farm();
     item.data.id = -1;
-    item.expire_date = buildingTasks.reduce((acc, c)=> {
-      if (acc.finishTime > c.finishTime)
-        return c;
-      else
-        return acc;
-    }).finishTime;
+    if (buildingTasks.length > 0)
+      item.expire_date = buildingTasks.reduce((acc, c)=> {
+        if (acc.finishTime > c.finishTime)
+          return c;
+        else
+          return acc;
+      }).finishTime;
+    if (item.expire_date < Date.now()) {
+      buildingTasksItem.expire_date = -1;
+      buildingTasksItem.store();
+      item.expire_date = -1;
+    }
   }
   store(ItemKeys.build_target_farm, item);
   cb();
