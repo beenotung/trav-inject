@@ -13,8 +13,8 @@ namespace ItemKeys {
   // export const quest_info = 'quest_info';
 }
 
-/* 10 second */
-const default_expire_period = 10000;
+/* time to refetch the Item from webpage into localStorage */
+const default_expire_period = 1000 * 30;
 
 function isDefined(o: any) {
   return !(typeof o === 'undefined' || o == null);
@@ -52,6 +52,27 @@ function newId(): number {
 
 function last<A>(xs: A[]): A {
   return xs[xs.length - 1];
+}
+
+function groupBy<A>(f: (a: A)=>number, as: A[]): {[id: number]: A[]} {
+  let res: {[id: number]: A[]} = {};
+  as.forEach(a=> {
+    let i = f(a);
+    if (res[i]) {
+      res[i].push(a);
+    } else {
+      res[i] = [a];
+    }
+  });
+  return res;
+}
+
+function obj_to_array(o: any): Array<[string,any]> {
+  return Object.keys(o)
+    .map(k=> {
+      let res: [string,any] = [k, o[k]];
+      return res;
+    });
 }
 
 function str_to_int(s: string): number {
@@ -220,6 +241,7 @@ class ProductionInfo {
   produce_rate: number[];
   amount: number[];
   storage_capacity: number[];
+  time_to_full: number[];
 }
 function find_production_info(cb: Function) {
   console.log('find production info');
@@ -245,9 +267,13 @@ function find_production_info(cb: Function) {
     res.amount = jQuery('#stockBar').find('.stockBarButton').find('span')
       .map((i, e)=>str_to_int($(e).text()))
       .toArray();
+    res.time_to_full = res.storage_capacity.map((cap, i)=> {
+      return (cap - res.amount[i]) / (res.produce_rate[i] ) * 3600 * 1000;
+    });
     let item = new Item<ProductionInfo>();
     item.data = res;
     store(ItemKeys.production_info, item);
+    cb();
   } else {
     location.replace('dorf1.php');
   }
@@ -300,7 +326,7 @@ function main() {
 
 function login(): boolean {
   const $ = jQuery;
-  let res = $('.loginBox');
+  let res = $('.loginTable');
   console.log('check login', res.length);
   if (res.length == 0) {
     return true;
@@ -323,6 +349,7 @@ function findTask() {
     ;
   if (xs.length == 0) {
     console.log('no task');
+    execute_build_task();
   } else {
     let name: string = xs[0];
     console.log('found task', name);
@@ -341,4 +368,47 @@ function findTask() {
         console.error('not impl', name);
     }
   }
+}
+
+function execute_build_task() {
+  const $ = jQuery;
+  console.log('execute build task');
+  let buildingTasks: BuildingTask[] = getOrElse(ItemKeys.building_task_list, ()=> {
+    find_building_task_list(execute_build_task);
+    throw new Error('building task list not ready');
+  }).data;
+  let farms: Farm[] = getOrElse<Farm[]>(ItemKeys.farm_info, ()=> {
+    find_farm_info(execute_build_task);
+    return [];
+  }).data.filter((farm: Farm)=>!farm.not_now);
+  let production_info: ProductionInfo = getOrElse(ItemKeys.production_info, ()=> {
+    find_production_info(execute_build_task);
+    throw new Error('production info not ready');
+  }).data;
+  let max_time = production_info.time_to_full.reduce((acc, c)=>Math.max(acc, c));
+  let farmss: {[idx: number]: Farm[]} = groupBy(farm=>farm.farm_type, farms.filter(x=>!x.not_now));
+  let farm = obj_to_array(farmss)
+    .map((e: [string,Farm[]])=>[+e[0], e[1]])
+    .map((e: [number,Farm[]])=> {
+      let farms: Farm[] = e[1];
+      return farms.reduce((acc, c)=> {
+        if (acc.level < c.level)
+          return acc;
+        else
+          return c;
+      })
+    })
+    .reduce((acc, c)=> {
+      console.log('compare', acc, c);
+      if (production_info.time_to_full[acc.farm_type] < production_info.time_to_full[c.farm_type]) {
+        console.log('chosen', c);
+        return c;
+      }
+      else {
+        console.log('chosen', acc);
+        return acc;
+      }
+    });
+  Object.setPrototypeOf(farm, Farm.prototype);
+  console.log('selected farm', farm);
 }
