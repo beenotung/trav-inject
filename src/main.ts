@@ -10,6 +10,8 @@ namespace ItemKeys {
   export const farm_info = 'farm_info';
   export const production_info = 'production_info';
   export const hero_advance_info = 'hero_advance_info';
+  export const build_target_farm = 'build_target_farm';
+  export const exec_build_target_farm = 'exec_build_target_farm';
   // export const quest_info = 'quest_info';
 }
 
@@ -192,7 +194,7 @@ class Farm {
   id: number;
   name: string;
   level: number;
-  /* 1..4 */
+  /* 0..3 */
   farm_type: number;
   not_now: boolean;
   under_construct: boolean;
@@ -226,7 +228,7 @@ function find_farm_info(cb: Function) {
         }
         res.data[i].not_now = classStr.includes('notNow');
         res.data[i].under_construct = classStr.includes('underConstruction');
-        res.data[i].farm_type = classStr.split(' ').filter(x=>x.includes('gid')).map(x=>+x.replace('gid', ''))[0];
+        res.data[i].farm_type = classStr.split(' ').filter(x=>x.includes('gid')).map(x=>+x.replace('gid', ''))[0] - 1;
       });
     console.log('farms', res.data);
     store(ItemKeys.farm_info, res);
@@ -349,7 +351,6 @@ function findTask() {
     ;
   if (xs.length == 0) {
     console.log('no task');
-    execute_build_task();
   } else {
     let name: string = xs[0];
     console.log('found task', name);
@@ -362,6 +363,10 @@ function findTask() {
         return find_production_info(findTask);
       case ItemKeys.hero_advance_info:
         return find_hero_advance_info(findTask);
+      case ItemKeys.build_target_farm:
+        return find_build_target_farm(findTask);
+      case ItemKeys.exec_build_target_farm:
+        return exec_build_target_farm(findTask);
       // case ItemKeys.quest_info:
       //   return find_quest_info(findTask);
       default:
@@ -370,22 +375,21 @@ function findTask() {
   }
 }
 
-function execute_build_task() {
+function find_build_target_farm(cb: Function) {
   const $ = jQuery;
-  console.log('execute build task');
+  console.log('find_build_target_farm');
   let buildingTasks: BuildingTask[] = getOrElse(ItemKeys.building_task_list, ()=> {
-    find_building_task_list(execute_build_task);
+    find_building_task_list(find_build_target_farm);
     throw new Error('building task list not ready');
   }).data;
   let farms: Farm[] = getOrElse<Farm[]>(ItemKeys.farm_info, ()=> {
-    find_farm_info(execute_build_task);
+    find_farm_info(find_build_target_farm);
     return [];
   }).data.filter((farm: Farm)=>!farm.not_now);
   let production_info: ProductionInfo = getOrElse(ItemKeys.production_info, ()=> {
-    find_production_info(execute_build_task);
+    find_production_info(find_build_target_farm);
     throw new Error('production info not ready');
   }).data;
-  let max_time = production_info.time_to_full.reduce((acc, c)=>Math.max(acc, c));
   let farmss: {[idx: number]: Farm[]} = groupBy(farm=>farm.farm_type, farms.filter(x=>!x.not_now));
   let farm = obj_to_array(farmss)
     .map((e: [string,Farm[]])=>[+e[0], e[1]])
@@ -399,16 +403,26 @@ function execute_build_task() {
       })
     })
     .reduce((acc, c)=> {
-      console.log('compare', acc, c);
       if (production_info.time_to_full[acc.farm_type] < production_info.time_to_full[c.farm_type]) {
-        console.log('chosen', c);
         return c;
       }
       else {
-        console.log('chosen', acc);
         return acc;
       }
     });
   Object.setPrototypeOf(farm, Farm.prototype);
   console.log('selected farm', farm);
+  let item = new Item<Farm>();
+  item.data = farm;
+  store(ItemKeys.build_target_farm, item);
+  cb();
+}
+
+function exec_build_target_farm(cb: Function) {
+  console.log('exec_build_target_farm');
+  let farm: Farm = getOrElse(ItemKeys.build_target_farm, ()=> {
+    find_build_target_farm(()=>exec_build_target_farm(cb));
+    throw new Error('build_target_farm not ready');
+  })
+  // TODO
 }
