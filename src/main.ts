@@ -41,9 +41,13 @@ function getOrElse<A>(key: string, fallback: ()=>Item<A>): Item<A> {
     return fallback();
 }
 
-function store(key: string, value: any) {
-  console.log('store', key, value);
-  localStorage[key] = JSON.stringify(value);
+function store<A>(name: string, item: Item<A>) {
+  console.log('store', name, item);
+  if (item.name != name) {
+    console.warn('storing item, but name does not match, overriding item name');
+    item.name = name;
+  }
+  localStorage[name] = JSON.stringify(item);
 }
 
 function newId(): number {
@@ -171,7 +175,7 @@ class BuildingTask {
 }
 function find_building_task_list(cb: Function) {
   const $ = jQuery;
-  console.log('find building task list');
+  console.log('running find_building_task_list');
   if (isInPage('dorf1.php', 'dorf2.php')) {
     let res = new Item<BuildingTask[]>();
     res.data = $('.buildingList')
@@ -290,6 +294,9 @@ function find_production_info(cb: Function) {
 
 namespace HeroStatus {
   export const in_home = 'in_home';
+  export const advance_out = 'advance_out';
+  export const attack_out = 'attack_out';
+  export const move_in = 'move_in';
 }
 class HeroAdvanceInfo {
   numberOfAdvance: number;
@@ -308,6 +315,15 @@ function find_hero_advance_info(cb: Function) {
   switch (statusClass) {
     case 'heroStatus100':
       res.data.heroStatus = HeroStatus.in_home;
+      break;
+    case 'heroStatus50':
+      res.data.heroStatus = HeroStatus.advance_out;
+      break;
+    case 'heroStatus9':
+      res.data.heroStatus = HeroStatus.move_in;
+      break;
+    case 'heroStatus4':
+      res.data.heroStatus = HeroStatus.attack_out;
       break;
     default:
       throw new Error('not identifiable hero status <' + statusClass + '> : ' + $heroStatusMessage.text())
