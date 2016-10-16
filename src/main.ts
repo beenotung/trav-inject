@@ -160,6 +160,22 @@ class Item<A> {
     return item;
   }
 }
+
+function DOMInit() {
+  let resetBtn = document.createElement('button');
+  resetBtn.textContent = 'reset inject tool';
+  resetBtn.style.border = '1px white solid';
+  resetBtn.style.background = 'lightgrey';
+  resetBtn.style.color = 'black';
+  resetBtn.style.fontWeight = 'bold';
+  resetBtn.style.padding = '4px';
+  resetBtn.onclick = ()=> {
+    Object.keys(ItemKeys).forEach(x=>localStorage.removeItem(x));
+    location.reload(true);
+  };
+  document.body.appendChild(resetBtn);
+}
+
 function init() {
   console.log('begin init');
   if (typeof jQuery === 'undefined') {
@@ -177,7 +193,7 @@ function init() {
   console.log('end init');
 }
 
-init();
+setTimeout(init, Random.nextInt(500, 1000));
 
 function isInPage(...filenames: string[]) {
   return filenames.some(filename=>location.pathname == '/' + filename);
@@ -393,6 +409,7 @@ function find_quest_info(cb: Function) {
 }
 
 function main() {
+  DOMInit();
   login() && setTimeout(findTask);
 }
 
@@ -532,10 +549,10 @@ function exec_build_target_farm(cb: Function) {
     let times = container.find('span').text().split(':').map(str_to_int);
     let time = (times[0] * 3600 + times[1] * 60 + times[2]) * 1000;
     resItem.expire_period = time;
-    resItem.expire_date = Date.now() + time + 1000 * Random.nextInt(5, 5);
+    resItem.expire_date = Date.now() + time;
+    store(ItemKeys.exec_build_target_farm, resItem);
     srcItem.expire_date = -1;
     srcItem.store();
-    store(ItemKeys.exec_build_target_farm, resItem);
-    setTimeout(()=> container.find('button').click(), Random.nextInt(2000, 1000));
+    container.find('button').click();
   }
 }
