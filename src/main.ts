@@ -264,7 +264,7 @@ function find_farm_info(cb: Function) {
     jQuery('#village_map').find('.level')
       .each((i, e)=> {
         let $e = $(e);
-        var classStr = $e.attr('class');
+        let classStr = $e.attr('class');
         let level = last(classStr.split('level'));
         if (+level != res.data[i].level) {
           throw new Error('farm not matching');
@@ -341,8 +341,8 @@ function find_hero_advance_info(cb: Function) {
   let res = new Item<HeroAdvanceInfo>();
   res.data = new HeroAdvanceInfo();
   /* find status */
-  var $heroStatusMessage = $('.heroStatusMessage');
-  var statusClass = $heroStatusMessage
+  let $heroStatusMessage = $('.heroStatusMessage');
+  let statusClass = $heroStatusMessage
     .find('img')
     .attr('class');
   switch (statusClass) {
@@ -373,9 +373,7 @@ function find_hero_advance_info(cb: Function) {
 function exec_hero_advance_info(cb: Function) {
   const $ = jQuery;
   let itemHeroAdvanceInfo = Item.load<HeroAdvanceInfo>(ItemKeys.hero_advance_info);
-  var heroAdvanceInfo = itemHeroAdvanceInfo.data;
-  let res = new Item<number>();
-  res.name = ItemKeys.exec_hero_advance_info;
+  let heroAdvanceInfo = itemHeroAdvanceInfo.data;
   if (heroAdvanceInfo.heroStatus == HeroStatus.in_home && heroAdvanceInfo.numberOfAdvance > 0) {
     console.log('directing hero to go advance');
     if (!isInPage('hero_adventure.php', 'start_adventure.php')) {
@@ -388,16 +386,23 @@ function exec_hero_advance_info(cb: Function) {
         res[0].click();
         return;
       } else {
-        setTimeout(()=> {
-          jQuery('form.adventureSendButton').find('button[type=submit]').click();
-        });
+        let btnSend = jQuery('form.adventureSendButton').find('button[type=submit]');
+        if (btnSend.length > 0) {
+          let res = new Item<number>();
+          res.name = ItemKeys.exec_hero_advance_info;
+          // TODO get advance time
+          res.store();
+          btnSend.click();
+        } else {
+          location.replace('dorf1.php');
+          cb();
+        }
       }
     }
   } else {
     console.log('hero cannot move, skip');
-    setTimeout(cb);
+    cb();
   }
-  res.store();
 }
 
 function find_quest_info(cb: Function) {
@@ -467,7 +472,7 @@ function findTask() {
 function find_build_target_farm(cb: Function) {
   const $ = jQuery;
   console.log('find_build_target_farm');
-  var buildingTasksItem = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype, true);
+  let buildingTasksItem = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype, true);
   let buildingTasks: BuildingTask[] = buildingTasksItem.data;
   let farms: Farm[] = Item.load<Farm[]>(ItemKeys.farm_info).data.filter((farm: Farm)=>!farm.not_now);
   let production_info: ProductionInfo = Item.load<ProductionInfo>(ItemKeys.production_info, ProductionInfo.prototype).data;
@@ -520,7 +525,7 @@ function find_build_target_farm(cb: Function) {
 
 function exec_build_target_farm(cb: Function) {
   console.log('exec_build_target_farm');
-  var srcItem = Item.load<Farm>(ItemKeys.build_target_farm, Farm.prototype);
+  let srcItem = Item.load<Farm>(ItemKeys.build_target_farm, Farm.prototype);
   let farm: Farm = srcItem.data;
   let resItem = new Item<Farm>();
   resItem.data = farm;
