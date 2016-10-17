@@ -374,6 +374,8 @@ function exec_hero_advance_info(cb: Function) {
   const $ = jQuery;
   let itemHeroAdvanceInfo = Item.load<HeroAdvanceInfo>(ItemKeys.hero_advance_info);
   let heroAdvanceInfo = itemHeroAdvanceInfo.data;
+  let res = new Item<number>();
+  res.name = ItemKeys.exec_hero_advance_info;
   if (heroAdvanceInfo.heroStatus == HeroStatus.in_home && heroAdvanceInfo.numberOfAdvance > 0) {
     console.log('directing hero to go advance');
     if (!isInPage('hero_adventure.php', 'start_adventure.php')) {
@@ -388,8 +390,6 @@ function exec_hero_advance_info(cb: Function) {
       } else {
         let btnSend = jQuery('form.adventureSendButton').find('button[type=submit]');
         if (btnSend.length > 0) {
-          let res = new Item<number>();
-          res.name = ItemKeys.exec_hero_advance_info;
           // TODO get advance time
           res.store();
           btnSend.click();
@@ -401,6 +401,7 @@ function exec_hero_advance_info(cb: Function) {
     }
   } else {
     console.log('hero cannot move, skip');
+    res.store();
     cb();
   }
 }
@@ -550,14 +551,19 @@ function exec_build_target_farm(cb: Function) {
     }
     console.log('already in building page');
     console.log('going to build', farm.name, 'level', farm.level);
-    let container = jQuery('.showBuildCosts.normal');
-    let times = container.find('span').text().split(':').map(str_to_int);
+    let $container = jQuery('.showBuildCosts.normal');
+    let $time = $container.find('span');
+    if ($container.length == 0) {
+      $container = jQuery('div.contentContainer').find('#build');
+      $time = $container.find('span.clocks');
+    }
+    let times = $time.text().split(':').map(str_to_int);
     let time = (times[0] * 3600 + times[1] * 60 + times[2]) * 1000;
     resItem.expire_period = time;
     resItem.expire_date = Date.now() + time;
     store(ItemKeys.exec_build_target_farm, resItem);
     srcItem.expire_date = -1;
     srcItem.store();
-    container.find('button').click();
+    $container.find('button').click();
   }
 }

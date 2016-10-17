@@ -50,3 +50,7 @@ However, you will have to paste the javascript code into console everytime the p
  - [ ] Auto trade
     - [ ] Balance resource within self villages
     - [ ] To Alliance on excess resources
+ - [ ] Multiple village support
+
+## Implementation Todo List
+ - [ ] Read from dorf3 instead of dorf1

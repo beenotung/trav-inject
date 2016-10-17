@@ -11,10 +11,17 @@ if [ ! -f .quick-deploy ]; then
   npm run dev &
   sleep 8;
 fi
-cat lib/babel-polyfill/browser-polyfill.js dist/bundle.js | xclip -sel clipboard
+if [ -f dist/bundle.js ]; then
+  cat lib/babel-polyfill/browser-polyfill.js dist/bundle.js | xclip -sel clipboard
+else
+  sleep 1;
+  ./quick-deploy.sh
+  exit $?
+fi
 if [ $? -eq 0 ]; then
   echo 'copied to clipboard'
 else
-  sleep 5;
+  sleep 1;
   ./quick-deploy.sh
+  exit $?
 fi
