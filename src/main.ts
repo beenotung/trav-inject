@@ -391,12 +391,12 @@ function init() {
     };
     document.head.appendChild(s);
   } else {
-    setTimeout(main);
+    setTimeout(main, Random.nextInt(250, 750));
   }
   console.log('end init');
 }
 
-setTimeout(init, Random.nextInt(250, 750));
+setTimeout(init);
 
 function isInPage(...filenames: string[]) {
   return filenames.some(filename=>location.pathname == '/' + filename);
@@ -724,10 +724,22 @@ function exec_user_task(cb: Function) {
         clear_user_task();
       } else if (isInPage('hero_auction.php')) {
         let max_price = localStorage[ItemKeys.max_price];
-        let row = $('td.silver').filter((i, e)=>+$(e).text() <= max_price).parent();
+
+        function get_amount(row: JQuery) {
+          return str_to_int(row.find('td.name').text().split('×')[0]);
+        }
+
+        let row = $('td.silver').filter((i, e) => {
+          let amount = get_amount($(e).parent());
+          return +($(e).text()) / amount <= max_price;
+        }).parent();
+        row = row.filter((i, e)=>jQuery(e).find('.selected').length == 0);
         let offset = +user_task_step();
         row = row.filter(i=>i >= offset);
-        let player_name = $('.titleInHeader').text().split(' - ')[0];
+        let player_name = '';
+        if (row.first().find('.selected').length != 0) {
+          player_name = $('.titleInHeader').text().split(' - ')[0];
+        }
         let buyer_name = row.parent().find('a.hidden')[0] && (<HTMLAnchorElement>row.parent().find('a.hidden')[0]).text;
         if (player_name == buyer_name) {
           user_task_step(++offset);
@@ -741,7 +753,9 @@ function exec_user_task(cb: Function) {
         } else if (player_name == buyer_name) {
           console.log('the selected good is ordered already');
           // setTimeout(()=>exec_user_task(cb), 1000);
+          user_task_step(++offset);
           exec_user_task(cb);
+          // location.reload();
         } else {
           let a = row.first().find('td.bid').find('a.switchClosed');
           if (a.length != 0) {
@@ -749,10 +763,19 @@ function exec_user_task(cb: Function) {
             console.log('open good menu');
             unsafe.follow_href(a);
           } else {
-            /* enter the price and set order */
-            console.log('submit good form');
-            row.parent().find('input.maxBid').val(max_price);
-            row.parent().find('button:submit').click();
+            /*  check if the current price is too high */
+            let current_price = str_to_int(row.parent().find('input.maxBid').parent().find('span').first().text());
+            let target_price = max_price * get_amount(row);
+            if (current_price >= target_price) {
+              user_task_step(++offset);
+              exec_user_task(cb);
+              // location.reload();
+            } else {
+              /* enter the price and set order */
+              console.log('submit good form');
+              row.parent().find('input.maxBid').val(max_price * get_amount(row));
+              row.parent().find('button:submit').click();
+            }
           }
         }
       } else {
