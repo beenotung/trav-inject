@@ -1,11 +1,14 @@
 import {defer} from '../lib/jslib/es6/dist/es6/src/utils-es6';
 import {config} from './config';
-import {isNumber, Random} from '../lib/jslib/es5/dist/utils-es5';
+import {isNumber, Random, noop} from '../lib/jslib/es5/dist/utils-es5';
 
 declare function $(s: string): HTMLCollection;
 
 namespace ItemKeys {
   export const lastid = 'lastid';
+  export const is_doing_user_task = 'is_doing_user_task';
+  export const user_task_step = 'user_task_step';
+  export const exec_user_task = 'exec_user_task';
   export const building_task_list = 'building_task_list';
   export const farm_info = 'farm_info';
   export const production_info = 'production_info';
@@ -15,6 +18,12 @@ namespace ItemKeys {
   export const exec_build_target_farm = 'exec_build_target_farm';
   // export const quest_info = 'quest_info';
 }
+
+let non_expire_item_keys = [
+  ItemKeys.lastid
+  , ItemKeys.is_doing_user_task
+  , ItemKeys.user_task_step
+];
 
 /* time to refetch the Item from webpage into localStorage */
 const default_expire_period = 1000 * 30 * 60;
@@ -105,6 +114,25 @@ function str_to_int(s: string): number {
   });
 }
 
+function wrapLocalStorage(name: string): (o?: any)=>any {
+  return function () {
+    let res: string;
+    if (arguments.length == 0) {
+      res = localStorage[name];
+    } else if (arguments.length == 1) {
+      res = localStorage[name];
+      localStorage[name] = JSON.stringify(arguments[0]);
+    } else {
+      throw new Error("Illegal argument: " + JSON.stringify(arguments));
+    }
+    try {
+      return JSON.parse(res);
+    } catch (e) {
+      return res;
+    }
+  }
+}
+
 class Item<A> {
   name: string;
   id: number;
@@ -162,6 +190,7 @@ class Item<A> {
 }
 
 function DOMInit() {
+  const $ = jQuery;
   let resetBtn = document.createElement('button');
   resetBtn.textContent = 'reset inject tool';
   resetBtn.style.border = '1px white solid';
@@ -173,7 +202,19 @@ function DOMInit() {
     Object.keys(ItemKeys).forEach(x=>localStorage.removeItem(x));
     location.reload(true);
   };
-  document.body.appendChild(resetBtn);
+  // document.body.appendChild(resetBtn);
+  $('#pageLinks').prepend(resetBtn);
+  {
+    let container = $('.forwardBackward');
+    if (container.length > 0) {
+      let a = $('<a style="float: none;padding: 15px">rub</a>');
+      container.append(a);
+      a.click(()=> {
+        localStorage[ItemKeys.is_doing_user_task] = true;
+        exec_user_task(noop);
+      })
+    }
+  }
 }
 
 function init() {
@@ -193,7 +234,7 @@ function init() {
   console.log('end init');
 }
 
-setTimeout(init, Random.nextInt(500, 1000));
+setTimeout(init, Random.nextInt(250, 750));
 
 function isInPage(...filenames: string[]) {
   return filenames.some(filename=>location.pathname == '/' + filename);
@@ -416,7 +457,7 @@ function find_quest_info(cb: Function) {
 
 function main() {
   DOMInit();
-  login() && setTimeout(findTask);
+  login() && init_var() && setTimeout(findTask);
 }
 
 function login(): boolean {
@@ -432,10 +473,75 @@ function login(): boolean {
   return false;
 }
 
+function init_var() {
+  /* init local storage and global vars */
+  return true;
+}
+namespace UserTask {
+}
+class RubTask {
+  total_res: number[];
+  hill: number;
+  target_res: number;
+}
+function exec_user_task(cb: Function) {
+  const $ = jQuery;
+  console.log('exec user task');
+  if (localStorage[ItemKeys.is_doing_user_task]) {
+    let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
+    console.log('user task step: ' + user_task_step());
+    if (isInPage('berichte.php')) {
+      let res = new RubTask();
+      console.log(0);
+      let $goods = $('table#attacker').find('.goods');
+      res.total_res = [];
+      res.total_res[0] = str_to_int($goods.find('.r1').parent().text());
+      res.total_res[1] = str_to_int($goods.find('.r2').parent().text());
+      res.total_res[2] = str_to_int($goods.find('.r3').parent().text());
+      res.total_res[3] = str_to_int($goods.find('.r4').parent().text());
+      res.hill = str_to_int($goods.find('.gebIcon').parent().text());
+      res.target_res = res.total_res.map(x=>Math.max(0, x - res.hill)).reduce((a, b)=>a + b);
+      console.log(res);
+      wrapLocalStorage(RubTask.name)(res);
+      location.replace($('table').filter((i, e)=>e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
+    } else if (isInPage('position_details.php')) {
+      console.log('in position details page');
+      location.replace(jQuery('div.option').find('a').filter((i, e)=>$(e).attr('href').includes('build.php?id=39')).attr('href'));
+    } else if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
+      jQuery('div.option').find(':radio[value=4]').click();
+      let res: RubTask = wrapLocalStorage(RubTask.name)();
+
+      function number_of_unit(unit_class: string, count?: number) {
+        if (count == void 0) {
+          return str_to_int($('#troops').find('.unit.' + unit_class).parent().find('a').text());
+        } else {
+          $('#troops').find('.unit.u1').parent().find('input').val(count);
+        }
+      }
+
+      let n_u1 = number_of_unit('u1');
+      let p_u1 = 100.0 * n_u1 * 50 / res.target_res;
+      if (p_u1 >= 80) {
+        if (p_u1 > 120)
+          number_of_unit('u1', Math.round(res.target_res / 50 * 1.2));
+        else
+          number_of_unit('u1', Math.round(n_u1));
+      } else {
+        console.log('not enough u1, only has ' + p_u1 + '%');
+      }
+      localStorage.removeItem(ItemKeys.is_doing_user_task);
+    } else {
+      throw new Error('Invalid step: ' + JSON.stringify(user_task_step()))
+    }
+  } else {
+    cb();
+  }
+}
+
 function findTask() {
   console.log('find task');
   let xs: string[] = Object.keys(ItemKeys)
-      .filter(x=>x != ItemKeys.lastid)
+      .filter(x=> non_expire_item_keys.indexOf(x) == -1)
       .filter(x=> {
         return !has(x) || (
             Item.load(x).expire_date < Date.now()
@@ -448,6 +554,8 @@ function findTask() {
     let name: string = xs[0];
     console.log('found task', name);
     switch (name) {
+      case ItemKeys.exec_user_task:
+        return exec_user_task(findTask);
       case ItemKeys.building_task_list:
         return find_building_task_list(findTask);
       case ItemKeys.farm_info:
