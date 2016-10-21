@@ -18,6 +18,8 @@ namespace ItemKeys {
   export const build_target_farm = 'build_target_farm';
   export const exec_build_target_farm = 'exec_build_target_farm';
   // export const quest_info = 'quest_info';
+  export const max_price = 'max_price';
+  export const buy_filter = 'buy_filter';
 }
 // Object.keys(ItemKeys).forEach(x=>unsafe.set(ItemKeys, x, x));
 
@@ -30,6 +32,8 @@ let non_expire_item_keys = [
   , ItemKeys.is_doing_user_task
   , ItemKeys.user_task_name
   , ItemKeys.user_task_step
+  , ItemKeys.max_price
+  , ItemKeys.buy_filter
 ];
 
 /* time to refetch the Item from webpage into localStorage */
@@ -192,6 +196,17 @@ module unsafe {
   export function newObject<A>(constructor: any): (o: any)=>A {
     return o=>new constructor(o);
   }
+
+  export function follow_href(a: any) {
+    if (a instanceof HTMLAnchorElement) {
+      location.replace(a.href);
+    } else if (a[0] instanceof HTMLAnchorElement) {
+      location.replace(a[0].href);
+    } else {
+      console.error('invalid input', {a: a});
+      throw new TypeError('input is not HTMLAnchorElement');
+    }
+  }
 }
 
 class Item<A> {
@@ -258,7 +273,6 @@ function clear_user_task() {
   t.expire_date = Date.now() + t.expire_period;
   store(ItemKeys.exec_user_task, t);
 }
-
 function DOMInit() {
   const $ = jQuery;
 
@@ -300,7 +314,7 @@ function DOMInit() {
 
   add_button('reset inject tool', ()=> {
     Object.keys(ItemKeys).forEach(x=>localStorage.removeItem(x));
-    location.reload(true);
+    location.replace('dorf1.php');
   });
 
   function activate_user_task(task_name: string) {
@@ -327,6 +341,37 @@ function DOMInit() {
       container.append(a_spy);
       a_spy.click(()=>activate_user_task(SpyTask.name));
     }
+  }
+
+  /* enrich auction */
+  if (isInPage('hero_auction.php')) {
+    let container = $('<div>');
+    let label = $('<label style="margin-left: 10px">max price</label>');
+    let input = $('<input style="width: 50px">');
+    let start = $('<input type=button value="start" style="margin-left: 10px">');
+    let stop = $('<input type=button value="stop" style="margin-left: 10px">');
+    let max_price = wrapLocalStorage(ItemKeys.max_price);
+    if (max_price()) {
+      input.val(max_price());
+    }
+    input.change(()=> {
+      if (isNumber(input.val())) {
+        max_price(+input.val());
+      } else {
+        input.val(max_price());
+      }
+      console.log('updated max_price', input.val());
+    });
+    start.click(() => {
+      localStorage[ItemKeys.buy_filter] = query('filter');
+      wrapLocalStorage(ItemKeys.user_task_step)(0);
+      activate_user_task(AuctionTask.name);
+    });
+    stop.click(()=> clear_user_task());
+    label.append(input);
+    container.append(label, start, stop);
+    let clear = jQuery('.contentNavi.tabSubWrapper').find('.clear');
+    clear.parent()[0].insertBefore(container[0], clear[0]);
   }
 }
 
@@ -355,6 +400,18 @@ setTimeout(init, Random.nextInt(250, 750));
 
 function isInPage(...filenames: string[]) {
   return filenames.some(filename=>location.pathname == '/' + filename);
+}
+
+function query(key: string): any {
+  let res = location.search.substring(1).split('&').filter(x=>x.indexOf(key + '=') == 0).map(x=>x.split('='));
+  if (res.length == 0)
+    return void 0;
+  else if (res.length == 1)
+    return res[0][1];
+  else {
+    console.error('more than one matched result:', res);
+    throw new Error('more than one matched query result');
+  }
 }
 
 class BuildingTask {
@@ -487,6 +544,7 @@ namespace HeroStatus {
   export const advance_out = 'advance_out';
   export const attack_out = 'attack_out';
   export const move_in = 'move_in';
+  export const help_out = 'help_out';
 }
 class HeroAdvanceInfo {
   numberOfAdvance: number;
@@ -512,6 +570,9 @@ function find_hero_advance_info(cb: Function) {
       break;
     case 'heroStatus9':
       res.data.heroStatus = HeroStatus.move_in;
+      break;
+    case 'heroStatus5':
+      res.data.heroStatus = HeroStatus.help_out;
       break;
     case 'heroStatus4':
       res.data.heroStatus = HeroStatus.attack_out;
@@ -603,6 +664,8 @@ class RubTask {
 }
 class SpyTask {
 }
+class AuctionTask {
+}
 function exec_user_task(cb: Function) {
   const $ = jQuery;
   console.log('exec user task');
@@ -659,6 +722,39 @@ function exec_user_task(cb: Function) {
         }
 
         clear_user_task();
+      } else if (isInPage('hero_auction.php')) {
+        let max_price = localStorage[ItemKeys.max_price];
+        let row = $('td.silver').filter((i, e)=>+$(e).text() <= max_price).parent();
+        let offset = +user_task_step();
+        row = row.filter(i=>i >= offset);
+        let player_name = $('.titleInHeader').text().split(' - ')[0];
+        let buyer_name = row.parent().find('a.hidden')[0] && (<HTMLAnchorElement>row.parent().find('a.hidden')[0]).text;
+        if (player_name == buyer_name) {
+          user_task_step(++offset);
+          row = row.filter(i=>i != 0);
+        }
+        if (row.length == 0) {
+          /* next page or stop */
+          console.log('cleared this page');
+          clear_user_task();
+          cb();
+        } else if (player_name == buyer_name) {
+          console.log('the selected good is ordered already');
+          // setTimeout(()=>exec_user_task(cb), 1000);
+          exec_user_task(cb);
+        } else {
+          let a = row.first().find('td.bid').find('a.switchClosed');
+          if (a.length != 0) {
+            /* open the menu */
+            console.log('open good menu');
+            unsafe.follow_href(a);
+          } else {
+            /* enter the price and set order */
+            console.log('submit good form');
+            row.parent().find('input.maxBid').val(max_price);
+            row.parent().find('button:submit').click();
+          }
+        }
       } else {
         console.error('Invalid user task', {
           task_name: user_task_name
