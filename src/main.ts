@@ -545,6 +545,7 @@ namespace HeroStatus {
   export const attack_out = 'attack_out';
   export const move_in = 'move_in';
   export const help_out = 'help_out';
+  export const help_arrived = 'help_arrived';
 }
 class HeroAdvanceInfo {
   numberOfAdvance: number;
@@ -562,6 +563,9 @@ function find_hero_advance_info(cb: Function) {
     .find('img')
     .attr('class');
   switch (statusClass) {
+    case'heroStatus103':
+      res.data.heroStatus = HeroStatus.help_arrived;
+      break;
     case 'heroStatus100':
       res.data.heroStatus = HeroStatus.in_home;
       break;
@@ -693,98 +697,80 @@ function exec_user_task(cb: Function) {
     } else if (isInPage('position_details.php')) {
       console.log('in position details page');
       location.replace(jQuery('div.option').find('a').filter((i, e)=>$(e).attr('href').includes('build.php?id=39')).attr('href'));
-    } else {
-      if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
-        jQuery('div.option').find(':radio[value=4]').click();
+    } else if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
+      jQuery('div.option').find(':radio[value=4]').click();
 
-        function number_of_unit(unit_class: string, count?: number) {
-          if (count == void 0) {
-            return str_to_int($('#troops').find('.unit.' + unit_class).parent().find('a').text());
-          } else {
-            $('#troops').find('.unit.' + unit_class).parent().find('input').val(count);
-          }
+      function number_of_unit(unit_class: string, count?: number) {
+        if (count == void 0) {
+          return str_to_int($('#troops').find('.unit.' + unit_class).parent().find('a').text());
+        } else {
+          $('#troops').find('.unit.' + unit_class).parent().find('input').val(count);
         }
+      }
 
-        if (user_task_name == RubTask.name) {
-          let res: RubTask = wrapLocalStorage(RubTask.name)();
-          let n_u1 = number_of_unit('u1');
-          let p_u1 = 100.0 * n_u1 * 50 / res.target_res;
-          if (p_u1 >= 80) {
-            if (p_u1 > 120)
-              number_of_unit('u1', Math.round(res.target_res / 50 * 1.2));
-            else
-              number_of_unit('u1', Math.round(n_u1));
-          } else {
-            console.log('not enough u1, only has ' + p_u1 + '%');
-          }
-        } else { /* SpyTask */
-          number_of_unit('u4', 1)
+      if (user_task_name == RubTask.name) {
+        let res: RubTask = wrapLocalStorage(RubTask.name)();
+        let n_u1 = number_of_unit('u1');
+        let p_u1 = 100.0 * n_u1 * 50 / res.target_res;
+        if (p_u1 >= 80) {
+          if (p_u1 > 120)
+            number_of_unit('u1', Math.round(res.target_res / 50 * 1.2));
+          else
+            number_of_unit('u1', Math.round(n_u1));
+        } else {
+          console.log('not enough u1, only has ' + p_u1 + '%');
         }
+      } else { /* SpyTask */
+        number_of_unit('u4', 1)
+      }
 
-        clear_user_task();
-      } else if (isInPage('hero_auction.php')) {
-        let max_price = localStorage[ItemKeys.max_price];
+      clear_user_task();
+    } else if (isInPage('hero_auction.php')) {
+      let max_price = localStorage[ItemKeys.max_price];
+      let offset = +user_task_step();
 
-        function get_amount(row: JQuery) {
-          return str_to_int(row.find('td.name').text().split('×')[0]);
-        }
+      function get_amount(row: JQuery) {
+        return str_to_int(row.find('td.name').text().split('×')[0]);
+      }
 
-        let row = $('td.silver').filter((i, e) => {
+      let row = $('td.silver')
+        .filter(i=>i >= offset)
+        .filter((i, e) => {
           let amount = get_amount($(e).parent());
           return +($(e).text()) / amount <= max_price;
-        }).parent();
-        row = row.filter((i, e)=>jQuery(e).find('.selected').length == 0);
-        let offset = +user_task_step();
-        row = row.filter(i=>i >= offset);
-        let player_name = '';
-        if (row.first().find('.selected').length != 0) {
-          player_name = $('.titleInHeader').text().split(' - ')[0];
-        }
-        let buyer_name = row.parent().find('a.hidden')[0] && (<HTMLAnchorElement>row.parent().find('a.hidden')[0]).text;
-        if (player_name == buyer_name) {
-          user_task_step(++offset);
-          row = row.filter(i=>i != 0);
-        }
-        if (row.length == 0) {
-          /* next page or stop */
-          console.log('cleared this page');
-          clear_user_task();
-          cb();
-        } else if (player_name == buyer_name) {
-          console.log('the selected good is ordered already');
-          // setTimeout(()=>exec_user_task(cb), 1000);
-          user_task_step(++offset);
-          exec_user_task(cb);
-          // location.reload();
+        }).parent().first();
+
+      if (row.length == 0) {
+        console.log('cleared this page');
+        clear_user_task();
+      } else {
+        if (row.find('.selected').length == 0) {
+          /* open menu */
+          console.log('open menu');
+          let a = row.find('td.bid').find('a.switchClosed');
+          unsafe.follow_href(a);
         } else {
-          let a = row.first().find('td.bid').find('a.switchClosed');
-          if (a.length != 0) {
-            /* open the menu */
-            console.log('open good menu');
-            unsafe.follow_href(a);
+          /* check if current price is too high */
+          let target_price = max_price * get_amount(row);
+          let current_price = str_to_int(row.parent().find('input.maxBid').parent().find('span').first().text());
+          user_task_step(+user_task_step() + 1);
+          if (current_price <= target_price) {
+            /* place order */
+            console.log('submit good form');
+            row.parent().find('input.maxBid').val(max_price * get_amount(row));
+            row.parent().find('button:submit').click();
           } else {
-            /*  check if the current price is too high */
-            let current_price = str_to_int(row.parent().find('input.maxBid').parent().find('span').first().text());
-            let target_price = max_price * get_amount(row);
-            if (current_price >= target_price) {
-              user_task_step(++offset);
-              exec_user_task(cb);
-              // location.reload();
-            } else {
-              /* enter the price and set order */
-              console.log('submit good form');
-              row.parent().find('input.maxBid').val(max_price * get_amount(row));
-              row.parent().find('button:submit').click();
-            }
+            console.log('skip this row');
+            exec_user_task(cb);
           }
         }
-      } else {
-        console.error('Invalid user task', {
-          task_name: user_task_name
-          , step: user_task_step()
-        });
-        throw new Error('Invalid user task');
       }
+    } else {
+      console.error('Invalid user task', {
+        task_name: user_task_name
+        , step: user_task_step()
+      });
+      throw new Error('Invalid user task');
     }
   } else {
     clear_user_task();
