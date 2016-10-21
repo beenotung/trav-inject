@@ -1,5 +1,6 @@
 import {config} from './config';
 import {isNumber, Random, noop} from '../lib/jslib/es5/dist/utils-es5';
+import {require as JSRequire} from '../lib/jslib/es6/dist/es6/src/utils-es6'
 
 declare function $(s: string): HTMLCollection;
 
@@ -112,12 +113,24 @@ function str_to_int(s: string): number {
     || x == '8'
     || x == '9'
     || x == ','
+    || x == '-'
   ).reduce((acc, c)=> {
     if (c == ',')
       return acc;
     else
       return acc + c;
   });
+}
+
+/**
+ * @param x : string, example: (1|-1)
+ * @return number[], example: [1,-1]
+ * */
+function str_to_xy(s: string) {
+  if (s[0] == '(' && s[s.length - 1] == ')')
+    s = s.substr(1, s.length - 2);
+  return s.split('|')
+    .map(str_to_int);
 }
 
 function wrapLocalStorage(name: string): (o?: any)=>any {
@@ -262,12 +275,26 @@ function DOMInit() {
     $('#pageLinks').prepend(resetBtn);
   }
 
-  add_button('test map', ()=> {
-    api.get_map_data(0, 0, 3, (tiles: api.Tile[])=> {
+  add_button('15-rice', ()=> {
+    let coor: string = jQuery('#sidebarBoxVillagelist').find('.coordinates').first().text();
+    let xy = str_to_xy(coor);
+    api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[])=> {
       // console.log({tiles: tiles});
-      let report_html = tiles.filter((x: api.Tile)=>x.is_free_village).filter(x=>x.farms[3] == 15).map(x=>
-        '<a href="http://tx3.travian.tw/position_details.php?x=' + x.x + '&y=' + x.y + '">' + x.x + '|' + x.y + '</a>'
-      ).join('<br>');
+      let report_html = 'center: ' + xy[0] + '|' + xy[1] + '<hr>';
+      report_html += tiles.filter((x: api.Tile)=>x.is_free_village).filter(x=>x.farms[3] == 15)
+        .sort((a, b)=> {
+          let da = Math.abs(xy[0] - a.x) + Math.abs(xy[1] - a.y);
+          let db = Math.abs(xy[0] - b.x) + Math.abs(xy[1] - b.y);
+          return da == db ? 0 :
+            da < db ? -1 : 1;
+        })
+        .map(x=>
+          '<a href="http://tx3.travian.tw/position_details.php?x=' + x.x + '&y=' + x.y + '">' + x.x + '|' + x.y + '</a>'
+        ).join('<br>');
+      let div = document.createElement('div');
+      div.innerHTML = report_html;
+      document.body.appendChild(div);
+      $(div).dialog();
     });
   });
 
@@ -304,6 +331,10 @@ function init() {
     let ori$ = window[<number><any>'$'];
     s.onload = ()=> {
       window[<number><any>'$'] = ori$;
+      JSRequire.load('http://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css', false, true, eval);
+      JSRequire.load('https://jqueryui.com/resources/demos/style.css', false, true, eval);
+      // require.load('https://code.jquery.com/jquery-1.12.4.js');
+      JSRequire.load('https://code.jquery.com/ui/1.12.1/jquery-ui.js', false, true, eval);
       main();
     };
     document.head.appendChild(s);
@@ -566,8 +597,8 @@ class RubTask {
 function exec_user_task(cb: Function) {
   const $ = jQuery;
   console.log('exec user task');
-  if (localStorage[ItemKeys.is_doing_user_task]) {
-    let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
+  let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
+  if (localStorage[ItemKeys.is_doing_user_task] && user_task_step()) {
     console.log('user task step: ' + user_task_step());
     if (isInPage('berichte.php')) {
       let res = new RubTask();
