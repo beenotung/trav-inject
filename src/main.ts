@@ -313,12 +313,19 @@ function DOMInit() {
     exec_user_task(noop);
   }
 
+  /* enrich when viewing report */
   {
     let container = $('.forwardBackward');
     if (container.length > 0) {
-      let a = $('<a style="float: none;padding: 15px">rub</a>');
-      container.append(a);
-      a.click(()=>activate_user_task(RubTask.name));
+      /* send rub from report */
+      let a_rub = $('<a style="float: none;padding: 15px">rub</a>');
+      container.append(a_rub);
+      a_rub.click(()=>activate_user_task(RubTask.name));
+
+      /* send spy from report */
+      let a_spy = $('<a style="float: none;padding: 15px">spy</a>');
+      container.append(a_spy);
+      a_spy.click(()=>activate_user_task(SpyTask.name));
     }
   }
 }
@@ -594,54 +601,71 @@ class RubTask {
   hill: number;
   target_res: number;
 }
+class SpyTask {
+}
 function exec_user_task(cb: Function) {
   const $ = jQuery;
   console.log('exec user task');
-  let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
-  if (localStorage[ItemKeys.is_doing_user_task] && user_task_step()) {
+  if (localStorage[ItemKeys.is_doing_user_task]) {
+    let user_task_name = localStorage[ItemKeys.user_task_name];
+    let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
     console.log('user task step: ' + user_task_step());
     if (isInPage('berichte.php')) {
-      let res = new RubTask();
-      console.log(0);
-      let $goods = $('table#attacker').find('.goods');
-      res.total_res = [];
-      res.total_res[0] = str_to_int($goods.find('.r1').parent().text());
-      res.total_res[1] = str_to_int($goods.find('.r2').parent().text());
-      res.total_res[2] = str_to_int($goods.find('.r3').parent().text());
-      res.total_res[3] = str_to_int($goods.find('.r4').parent().text());
-      res.hill = str_to_int($goods.find('.gebIcon').parent().text());
-      res.target_res = res.total_res.map(x=>Math.max(0, x - res.hill)).reduce((a, b)=>a + b);
-      console.log(res);
-      wrapLocalStorage(RubTask.name)(res);
+      if (user_task_name == RubTask.name) {
+        let res = new RubTask();
+        console.log(0);
+        let $goods = $('table#attacker').find('.goods');
+        res.total_res = [];
+        res.total_res[0] = str_to_int($goods.find('.r1').parent().text());
+        res.total_res[1] = str_to_int($goods.find('.r2').parent().text());
+        res.total_res[2] = str_to_int($goods.find('.r3').parent().text());
+        res.total_res[3] = str_to_int($goods.find('.r4').parent().text());
+        res.hill = str_to_int($goods.find('.gebIcon').parent().text());
+        res.target_res = res.total_res.map(x=>Math.max(0, x - res.hill)).reduce((a, b)=>a + b);
+        console.log(res);
+        wrapLocalStorage(RubTask.name)(res);
+      }
+
       location.replace($('table').filter((i, e)=>e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
     } else if (isInPage('position_details.php')) {
       console.log('in position details page');
       location.replace(jQuery('div.option').find('a').filter((i, e)=>$(e).attr('href').includes('build.php?id=39')).attr('href'));
-    } else if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
-      jQuery('div.option').find(':radio[value=4]').click();
-      let res: RubTask = wrapLocalStorage(RubTask.name)();
-
-      function number_of_unit(unit_class: string, count?: number) {
-        if (count == void 0) {
-          return str_to_int($('#troops').find('.unit.' + unit_class).parent().find('a').text());
-        } else {
-          $('#troops').find('.unit.u1').parent().find('input').val(count);
-        }
-      }
-
-      let n_u1 = number_of_unit('u1');
-      let p_u1 = 100.0 * n_u1 * 50 / res.target_res;
-      if (p_u1 >= 80) {
-        if (p_u1 > 120)
-          number_of_unit('u1', Math.round(res.target_res / 50 * 1.2));
-        else
-          number_of_unit('u1', Math.round(n_u1));
-      } else {
-        console.log('not enough u1, only has ' + p_u1 + '%');
-      }
-      clear_user_task();
     } else {
-      throw new Error('Invalid step: ' + JSON.stringify(user_task_step()))
+      if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
+        jQuery('div.option').find(':radio[value=4]').click();
+
+        function number_of_unit(unit_class: string, count?: number) {
+          if (count == void 0) {
+            return str_to_int($('#troops').find('.unit.' + unit_class).parent().find('a').text());
+          } else {
+            $('#troops').find('.unit.' + unit_class).parent().find('input').val(count);
+          }
+        }
+
+        if (user_task_name == RubTask.name) {
+          let res: RubTask = wrapLocalStorage(RubTask.name)();
+          let n_u1 = number_of_unit('u1');
+          let p_u1 = 100.0 * n_u1 * 50 / res.target_res;
+          if (p_u1 >= 80) {
+            if (p_u1 > 120)
+              number_of_unit('u1', Math.round(res.target_res / 50 * 1.2));
+            else
+              number_of_unit('u1', Math.round(n_u1));
+          } else {
+            console.log('not enough u1, only has ' + p_u1 + '%');
+          }
+        } else { /* SpyTask */
+          number_of_unit('u4', 1)
+        }
+
+        clear_user_task();
+      } else {
+        console.error('Invalid user task', {
+          task_name: user_task_name
+          , step: user_task_step()
+        });
+        throw new Error('Invalid user task');
+      }
     }
   } else {
     clear_user_task();
