@@ -276,7 +276,7 @@ function DOMInit() {
   }
 
   add_button('15-rice', ()=> {
-    let coor: string = jQuery('#sidebarBoxVillagelist').find('.coordinates').first().text();
+    let coor: string = jQuery('#sidebarBoxVillagelist').find('.active').find('.coordinates').text();
     let xy = str_to_xy(coor);
     api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[])=> {
       // console.log({tiles: tiles});
