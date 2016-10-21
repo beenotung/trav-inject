@@ -1,4 +1,3 @@
-import {defer} from '../lib/jslib/es6/dist/es6/src/utils-es6';
 import {config} from './config';
 import {isNumber, Random, noop} from '../lib/jslib/es5/dist/utils-es5';
 
@@ -7,6 +6,7 @@ declare function $(s: string): HTMLCollection;
 namespace ItemKeys {
   export const lastid = 'lastid';
   export const is_doing_user_task = 'is_doing_user_task';
+  export const user_task_name = 'user_task_name';
   export const user_task_step = 'user_task_step';
   export const exec_user_task = 'exec_user_task';
   export const building_task_list = 'building_task_list';
@@ -18,10 +18,16 @@ namespace ItemKeys {
   export const exec_build_target_farm = 'exec_build_target_farm';
   // export const quest_info = 'quest_info';
 }
+// Object.keys(ItemKeys).forEach(x=>unsafe.set(ItemKeys, x, x));
+
+namespace window_keys {
+  export const ajaxToken = 'ajaxToken'
+}
 
 let non_expire_item_keys = [
   ItemKeys.lastid
   , ItemKeys.is_doing_user_task
+  , ItemKeys.user_task_name
   , ItemKeys.user_task_step
 ];
 
@@ -133,6 +139,48 @@ function wrapLocalStorage(name: string): (o?: any)=>any {
   }
 }
 
+function single(single: any[]): any {
+  if (single.length == 1) {
+    return single[0];
+  } else {
+    let message = 'argument is not an single array';
+    console.error(message, {input: single});
+    throw new Error(message);
+  }
+}
+
+module unsafe {
+  export function get(o: any, k: number|string): any {
+    return o[k];
+  }
+
+  export function wrap(o: any) {
+    function set(k: number|string, v: any) {
+      o[k] = v;
+      return set;
+    }
+
+    function get(k: number|string) {
+      return o[k];
+    }
+
+    return {set: set, get: get};
+  }
+
+  export function set(o: any, k: number|string, v: any) {
+    return wrap(o)
+      .set(k, v);
+  }
+
+  export function array_includes(array: any[], v: any): boolean {
+    return get(array, 'includes').call(array, v);
+  }
+
+  export function newObject<A>(constructor: any): (o: any)=>A {
+    return o=>new constructor(o);
+  }
+}
+
 class Item<A> {
   name: string;
   id: number;
@@ -189,30 +237,61 @@ class Item<A> {
   }
 }
 
+function clear_user_task() {
+  localStorage.removeItem(ItemKeys.is_doing_user_task);
+  localStorage.removeItem(ItemKeys.user_task_name);
+  let t = new Item();
+  t.expire_period = Math.pow(2, 100);
+  t.expire_date = Date.now() + t.expire_period;
+  store(ItemKeys.exec_user_task, t);
+}
+
 function DOMInit() {
   const $ = jQuery;
-  let resetBtn = document.createElement('button');
-  resetBtn.textContent = 'reset inject tool';
-  resetBtn.style.border = '1px white solid';
-  resetBtn.style.background = 'lightgrey';
-  resetBtn.style.color = 'black';
-  resetBtn.style.fontWeight = 'bold';
-  resetBtn.style.padding = '4px';
-  resetBtn.onclick = ()=> {
+
+  function add_button(text: string, cb: (ev: MouseEvent)=>any) {
+    let resetBtn = document.createElement('button');
+    resetBtn.textContent = text;
+    resetBtn.style.border = '1px white solid';
+    resetBtn.style.background = 'lightgrey';
+    resetBtn.style.color = 'black';
+    resetBtn.style.fontWeight = 'bold';
+    resetBtn.style.padding = '4px';
+    resetBtn.onclick = cb;
+    // document.body.appendChild(resetBtn);
+    $('#pageLinks').prepend(resetBtn);
+  }
+
+  add_button('test map', ()=> {
+    api.get_map_data(0, 0, 3, (tiles: api.Tile[])=> {
+      // console.log({tiles: tiles});
+      let report_html = tiles.filter((x: api.Tile)=>x.is_free_village).filter(x=>x.farms[3] == 15).map(x=>
+        '<a href="http://tx3.travian.tw/position_details.php?x=' + x.x + '&y=' + x.y + '">' + x.x + '|' + x.y + '</a>'
+      ).join('<br>');
+    });
+  });
+
+  add_button('reset inject tool', ()=> {
     Object.keys(ItemKeys).forEach(x=>localStorage.removeItem(x));
     location.reload(true);
-  };
-  // document.body.appendChild(resetBtn);
-  $('#pageLinks').prepend(resetBtn);
+  });
+
+  function activate_user_task(task_name: string) {
+    localStorage[ItemKeys.is_doing_user_task] = true;
+    localStorage[ItemKeys.user_task_name] = task_name;
+    let t = new Item();
+    t.expire_period = 0;
+    t.expire_date = -1;
+    store(ItemKeys.exec_user_task, t);
+    exec_user_task(noop);
+  }
+
   {
     let container = $('.forwardBackward');
     if (container.length > 0) {
       let a = $('<a style="float: none;padding: 15px">rub</a>');
       container.append(a);
-      a.click(()=> {
-        localStorage[ItemKeys.is_doing_user_task] = true;
-        exec_user_task(noop);
-      })
+      a.click(()=>activate_user_task(RubTask.name));
     }
   }
 }
@@ -529,11 +608,12 @@ function exec_user_task(cb: Function) {
       } else {
         console.log('not enough u1, only has ' + p_u1 + '%');
       }
-      localStorage.removeItem(ItemKeys.is_doing_user_task);
+      clear_user_task();
     } else {
       throw new Error('Invalid step: ' + JSON.stringify(user_task_step()))
     }
   } else {
+    clear_user_task();
     cb();
   }
 }
@@ -673,5 +753,147 @@ function exec_build_target_farm(cb: Function) {
     srcItem.expire_date = -1;
     srcItem.store();
     $container.find('button').click();
+  }
+}
+
+module api {
+  export const translate = {
+    "allgemein.ok": "確定",
+    "allgemein.cancel": "取消",
+    "allgemein.anleitung": "遊戲教學",
+    "allgemein.close": "關閉",
+    "cropfinder.keine_ergebnisse": "沒有合要求的搜尋結果",
+    "k.spieler": "玩家：",
+    "k.einwohner": "人口：",
+    "k.allianz": "公會：",
+    "k.volk": "種族：",
+    "k.dt": "村莊",
+    "k.bt": "已被佔領的綠州",
+    "k.fo": "未被佔領的綠州",
+    "k.vt": "荒廢的土地",
+    "k.regionTooltip": "地區:",
+    "k.loadingData": "載入中…",
+    "a.v1": "羅馬人",
+    "a.v2": "條頓人",
+    "a.v3": "高盧人",
+    "a.v4": "自然界",
+    "a.v5": "賴達族",
+    "k.f1": "3-3-3-9",
+    "k.f2": "3-4-5-6",
+    "k.f3": "4-4-4-6",
+    "k.f4": "4-5-3-6",
+    "k.f5": "5-3-4-6",
+    "k.f6": "1-1-1-15",
+    "k.f7": "4-4-3-7",
+    "k.f8": "3-4-4-7",
+    "k.f9": "4-3-4-7",
+    "k.f10": "3-5-4-6",
+    "k.f11": "4-3-5-6",
+    "k.f12": "5-4-3-6",
+    "k.f99": "賴達村莊",
+    "b.ri1": "攻擊者獲得勝利且並無任何損失",
+    "b.ri2": "攻擊者獲得勝利，但有損失",
+    "b.ri3": "攻擊者戰敗了",
+    "b.ri4": "防禦者獲得勝利且並無任何損失",
+    "b.ri5": "防禦者獲得勝利，但有損失",
+    "b.ri6": "防禦者戰敗了",
+    "b.ri7": "防禦者戰敗了但無任何損失",
+    "b:ri1": "<img src=\"img/x.gif\" class=\"iReport iReport1\"/>",
+    "b:ri2": "<img src=\"img/x.gif\" class=\"iReport iReport2\"/>",
+    "b:ri3": "<img src=\"img/x.gif\" class=\"iReport iReport3\"/>",
+    "b:ri4": "<img src=\"img/x.gif\" class=\"iReport iReport4\"/>",
+    "b:ri5": "<img src=\"img/x.gif\" class=\"iReport iReport5\"/>",
+    "b:ri6": "<img src=\"img/x.gif\" class=\"iReport iReport6\"/>",
+    "b:ri7": "<img src=\"img/x.gif\" class=\"iReport iReport7\"/>",
+    "b:bi0": "<img class=\"carry empty\" src=\"img/x.gif\" alt=\"收獲\" />",
+    "b:bi1": "<img class=\"carry half\" src=\"img/x.gif\" alt=\"收獲\" />",
+    "b:bi2": "<img class=\"carry\" src=\"img/x.gif\" alt=\"收獲\" />",
+    "a.r1": "木材",
+    "a.r2": "磚塊",
+    "a.r3": "鋼鐵",
+    "a.r4": "穀物",
+    "a.atm69": "冒險編號 69",
+    "a.ad": "難度：",
+    "a.ad0": "困難",
+    "a.ad1": "普通",
+    "a.ad2": "普通",
+    "a.ad3": "普通",
+    "a:r1": "<img alt=\"木材\" src=\"img/x.gif\" class=\"r1\">",
+    "a:r2": "<img alt=\"磚塊\" src=\"img/x.gif\" class=\"r2\">",
+    "a:r3": "<img alt=\"鋼鐵\" src=\"img/x.gif\" class=\"r3\">",
+    "a:r4": "<img alt=\"穀物\" src=\"img/x.gif\" class=\"r4\">",
+    "k.arrival": "到達",
+    "k.ssupport": "增援",
+    "k.sspy": "偵察",
+    "k.sreturn": "退回",
+    "k.sraid": "搶奪",
+    "k.sattack": "攻擊",
+    "answers.world_07b_title": "Travian Answers",
+    "answers.world_16_title": "Travian Answers",
+    "hero_collapsed": "顯示更多資料",
+    "hero_expanded": "隱藏資料",
+    "infobox_collapsed": "顯示更多訊息",
+    "infobox_expanded": "隱藏訊息 | 標記所有訊息已讀",
+    "villagelist_collapsed": "顯示座標",
+    "villagelist_expanded": "隱藏座標"
+  };
+  export class Tile {
+    c: string;
+    t: string;
+    x: number;
+    y: number;
+    is_free_greenland: boolean;
+    is_free_village: boolean;
+    farms: number[];
+
+    constructor(raw: any) {
+      Object.assign(this, raw);
+      this.x *= 1;
+      this.y *= 1;
+      if (this.c) {
+        let cs = this.c.split(' ').map(x=>x.substr(1, x.length - 2));
+        this.is_free_greenland = unsafe.array_includes(cs, 'k.fo');
+        this.is_free_village = unsafe.array_includes(cs, 'k.vt');
+        if (this.is_free_village) {
+          let regExp = /k\.f[1-9][1-9]?/;
+          let farm_class = single(cs.filter(x=>regExp.test(x)));
+          this.farms = (<string>unsafe.get(translate, farm_class)).split('-').map(x=>+x);
+        }
+      }
+    }
+  }
+  /**
+   * @param cx : number -400..400
+   * @param cy : number -400..400
+   * @param zoom_level : number 1..3
+   * */
+  export function get_map_data(cx: number, cy: number, zoom_level: number, cb: (tiles: Tile[])=>void) {
+    let formData = new FormData();
+    /*
+     cmd:mapPositionData
+     data[x]:-57
+     data[y]:23
+     data[zoomLevel]:1
+     (empty)
+     ajaxToken:049d984c893da7b0c715bbe800f496b5
+     */
+    formData.append("cmd", "mapPositionData");
+    formData.append("data[x]", cx);
+    formData.append("data[y]", cy);
+    formData.append("data[zoomLevel]", zoom_level);
+    formData.append("", "");
+    formData.append("ajaxToken", unsafe.get(window, window_keys.ajaxToken));
+
+    let request = new XMLHttpRequest();
+    request.addEventListener("load", function () {
+      let res = JSON.parse(this.responseText).response;
+      if (res.error) {
+        throw new Error(res);
+      } else {
+        cb(res.data.tiles.map((x: any)=>new Tile(x)));
+      }
+    });
+    request.open("POST", "ajax.php?cmd=mapPositionData");
+    request.send(formData);
   }
 }
