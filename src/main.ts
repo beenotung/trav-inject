@@ -391,6 +391,44 @@ function DOMInit() {
     container.append(label, start, stop);
     let clear = jQuery('.contentNavi.tabSubWrapper').find('.clear');
     clear.parent()[0].insertBefore(container[0], clear[0]);
+
+    /* show ave price */
+    {
+      $('table').find('thead').find('th.silver').each((i, e)=> {
+        let th_silver = $(e);
+        let avg: number;
+
+        let amount_price_pairs = th_silver.parent().parent().parent().find('tbody').find('td.silver').parent().toArray().map(e=> {
+          let row = $(e);
+          let price = str_to_int(row.find('td.silver').text());
+          let amount = str_to_int(row.find('td.name').text().split('×')[0]);
+          return [amount, price]
+        });
+        let [sum_amount,sum_price]=amount_price_pairs
+          .reduce((acc, c)=>[acc[0] + c[0], acc[1] + c[1]]);
+        avg = sum_price / sum_amount;
+
+        let lower_guess = amount_price_pairs
+          .map(([amount,price])=> price / amount)
+          .reverse()
+          .reduce((acc, c)=> {
+            // console.log({acc: acc, c: c});
+            if (c > acc)
+              return acc * 0.8 + c * 0.2;
+            else
+              return acc * 0.5 + c * 0.5;
+          });
+
+        let min = amount_price_pairs.map(([n, p])=>p / n).reduce((acc, c)=>Math.min(acc, c));
+        let max = amount_price_pairs.map(([n, p])=>p / n).reduce((acc, c)=>Math.max(acc, c));
+
+        th_silver.append($('<span title="average"> ' + unsafe.method(Number, 'round', avg, 1) + '</span>'));
+        th_silver.append($('<span title="min"> ' + unsafe.method(Number, 'round', min, 1) + '</span>'));
+        th_silver.append($('<span>-</span>'));
+        th_silver.append($('<span title="max">' + unsafe.method(Number, 'round', max, 1) + '</span>'));
+        th_silver.append($('<span title="lower_guess" style="font-weight: bolder"> ' + unsafe.method(Number, 'round', lower_guess, 1) + '</span>'));
+      });
+    }
   }
 
   /* enrich user profile page */
@@ -805,7 +843,8 @@ function exec_user_task(cb: Function) {
           /* check if current price is too high */
           let target_price = max_price * get_amount(row);
           let current_price = str_to_int(row.parent().find('input.maxBid').parent().find('span').first().text());
-          user_task_step(+user_task_step() + 1);
+          let selected_idx = $('#auction').find('tbody').find('tr').toArray().map((e, i)=>[i, e]).filter(x=>$(x[1]).find('.selected').length != 0)[0][0];
+          user_task_step(Math.max(selected_idx, offset) + 1);
           if (current_price <= target_price) {
             /* place order */
             console.log('submit good form');
