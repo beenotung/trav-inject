@@ -3,6 +3,9 @@ import {isNumber, Random, noop} from '../lib/jslib/es5/dist/utils-es5';
 import {require as JSRequire} from '../lib/jslib/es6/dist/es6/src/utils-es6'
 
 declare function $(s: string): HTMLCollection;
+declare namespace Travian.Game.Map {
+  export function xy2id(x: number, y: number): number;
+}
 
 namespace ItemKeys {
   export const lastid = 'lastid';
@@ -130,10 +133,10 @@ function str_to_int(s: string): number {
  * @param x : string, example: (1|-1)
  * @return number[], example: [1,-1]
  * */
-function str_to_xy(s: string) {
+function str_to_xy(s: string): [number,number] {
   if (s[0] == '(' && s[s.length - 1] == ')')
     s = s.substr(1, s.length - 2);
-  return s.split('|')
+  return <[number,number]>s.split('|')
     .map(str_to_int);
 }
 
@@ -166,6 +169,14 @@ function single(single: any[]): any {
   }
 }
 
+function xy_to_dist(xy1: [number,number], xy2: [number,number]): number {
+  console.log('xy_to_dist', xy1, xy2);
+  return Math.sqrt(
+    Math.pow(xy1[0] - xy2[0], 2)
+    + Math.pow(xy1[1] - xy2[1], 2)
+  )
+}
+
 module unsafe {
   export function get(o: any, k: number|string): any {
     return o[k];
@@ -187,6 +198,10 @@ module unsafe {
   export function set(o: any, k: number|string, v: any) {
     return wrap(o)
       .set(k, v);
+  }
+
+  export function method(o: any, func_name: string, ...args: any[]) {
+    return (<Function>o[func_name]).apply(o, args);
   }
 
   export function array_includes(array: any[], v: any): boolean {
@@ -273,6 +288,10 @@ function clear_user_task() {
   t.expire_date = Date.now() + t.expire_period;
   store(ItemKeys.exec_user_task, t);
 }
+function get_current_village_xy(): [number,number] {
+  let coor: string = jQuery('#sidebarBoxVillagelist').find('.active').find('.coordinates').text();
+  return str_to_xy(coor);
+}
 function DOMInit() {
   const $ = jQuery;
 
@@ -290,8 +309,7 @@ function DOMInit() {
   }
 
   add_button('15-rice', ()=> {
-    let coor: string = jQuery('#sidebarBoxVillagelist').find('.active').find('.coordinates').text();
-    let xy = str_to_xy(coor);
+    let xy = get_current_village_xy();
     api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[])=> {
       // console.log({tiles: tiles});
       let report_html = 'center: ' + xy[0] + '|' + xy[1] + '<hr>';
@@ -308,7 +326,7 @@ function DOMInit() {
       let div = document.createElement('div');
       div.innerHTML = report_html;
       document.body.appendChild(div);
-      $(div).dialog();
+      unsafe.method($(div), 'dialog');
     });
   });
 
@@ -317,14 +335,15 @@ function DOMInit() {
     location.replace('dorf1.php');
   });
 
-  function activate_user_task(task_name: string) {
+  function activate_user_task(task_name: string, immediately = true) {
     localStorage[ItemKeys.is_doing_user_task] = true;
     localStorage[ItemKeys.user_task_name] = task_name;
     let t = new Item();
     t.expire_period = 0;
     t.expire_date = -1;
     store(ItemKeys.exec_user_task, t);
-    exec_user_task(noop);
+    if (immediately)
+      exec_user_task(noop);
   }
 
   /* enrich when viewing report */
@@ -373,6 +392,37 @@ function DOMInit() {
     let clear = jQuery('.contentNavi.tabSubWrapper').find('.clear');
     clear.parent()[0].insertBefore(container[0], clear[0]);
   }
+
+  /* enrich user profile page */
+  if (isInPage('spieler.php')) {
+    /* show distance and send spy */
+    let table = $('table#villages');
+    table.addClass('sortable');
+    let header = table.find('thead').find('tr');
+    header.append($('<th>distance</th>'));
+    header.append($('<th>spy</th>'));
+    let self_xy = get_current_village_xy();
+    table.find('tbody').find('tr').each((i, e)=> {
+      let row = $(e);
+      let coor = row.find('.coords');
+
+      function addCol(x: HTMLElement|JQuery) {
+        let col = $('<td>');
+        col.append(x);
+        row.append(col);
+      }
+
+      let target_xy = str_to_xy(coor.text());
+      let dist = xy_to_dist(self_xy, target_xy);
+      addCol($('<span>' + unsafe.method(Number, 'round', dist, 1) + '</span>'));
+      let a = $('<a>spy</a>');
+      a.click(()=> {
+        activate_user_task(SpyTask.name, false);
+        location.replace('build.php?id=39&tt=2&z=' + Travian.Game.Map.xy2id(target_xy[0], target_xy[1]))
+      });
+      addCol(a);
+    });
+  }
 }
 
 function init() {
@@ -387,6 +437,7 @@ function init() {
       JSRequire.load('https://jqueryui.com/resources/demos/style.css', false, true, eval);
       // require.load('https://code.jquery.com/jquery-1.12.4.js');
       JSRequire.load('https://code.jquery.com/ui/1.12.1/jquery-ui.js', false, true, eval);
+      JSRequire.load('http://www.kryogenix.org/code/browser/sorttable/sorttable.js', false, true, eval);
       main();
     };
     document.head.appendChild(s);
@@ -721,7 +772,8 @@ function exec_user_task(cb: Function) {
           console.log('not enough u1, only has ' + p_u1 + '%');
         }
       } else { /* SpyTask */
-        number_of_unit('u4', 1)
+        number_of_unit('u4', 1);
+        setTimeout(()=> $('#build').find(':submit').click());
       }
 
       clear_user_task();
