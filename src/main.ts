@@ -799,15 +799,34 @@ function exec_user_task(cb: Function) {
 
       if (user_task_name == RubTask.name) {
         let res: RubTask = wrapLocalStorage(RubTask.name)();
-        let n_u1 = number_of_unit('u1');
-        let p_u1 = 100.0 * n_u1 * 50 / res.target_res;
-        if (p_u1 >= 80) {
-          if (p_u1 > 120)
-            number_of_unit('u1', Math.round(res.target_res / 50 * 1.2));
-          else
-            number_of_unit('u1', Math.round(n_u1));
+
+        /**@return resource left : number */
+        function choose_unit(className: string, cap: number, target_amount: number): number {
+          let n_unit_available = number_of_unit(className);
+          let n_unit_need = Math.round(target_amount / cap);
+          let n_unit_assign = Math.min(n_unit_available, n_unit_need);
+          number_of_unit(className, n_unit_assign);
+          return target_amount - n_unit_assign * cap;
+        }
+
+        let unit_list: [string,number][] = [
+          ['u1', 50]
+          , ['u5', 100]
+          , ['u6', 70]
+        ];
+
+        let res_left = res.target_res * 1.2;
+        unit_list.forEach(([name,cap])=> {
+          res_left = choose_unit(name, cap, res_left);
+        });
+
+        if (res_left > 0) {
+          console.log('amount of resource left: ', res_left);
+          /* remove all values, manually send in multiple attack, due to different movement speed */
+          unit_list.forEach(x=>number_of_unit(x[0], 0));
         } else {
-          console.log('not enough u1, only has ' + p_u1 + '%');
+          console.log('all resource will be rub');
+          setTimeout(()=> $('#build').find(':submit').click());
         }
       } else { /* SpyTask */
         number_of_unit('u4', 1);
