@@ -822,11 +822,11 @@ function exec_user_task(cb: Function) {
 
         if (res_left > 0) {
           console.log('amount of resource left: ', res_left);
-          /* remove all values, manually send in multiple attack, due to different movement speed */
-          unit_list.forEach(x=>number_of_unit(x[0], 0));
+          // /* remove all values, manually send in multiple attack, due to different movement speed */
+          // unit_list.forEach(x=>number_of_unit(x[0], 0));
         } else {
           console.log('all resource will be rub');
-          setTimeout(()=> $('#build').find(':submit').click());
+          // setTimeout(()=> $('#build').find(':submit').click());
         }
       } else { /* SpyTask */
         number_of_unit('u4', 1);
