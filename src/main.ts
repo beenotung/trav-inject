@@ -404,6 +404,9 @@ function DOMInit() {
           let amount = str_to_int(row.find('td.name').text().split('×')[0]);
           return [amount, price]
         });
+        if (amount_price_pairs.length == 0)
+          return;
+
         let [sum_amount,sum_price]=amount_price_pairs
           .reduce((acc, c)=>[acc[0] + c[0], acc[1] + c[1]]);
         avg = sum_price / sum_amount;
@@ -791,7 +794,7 @@ function exec_user_task(cb: Function) {
 
       function number_of_unit(unit_class: string, count?: number) {
         if (count == void 0) {
-          return str_to_int($('#troops').find('.unit.' + unit_class).parent().find('a').text());
+          return str_to_int($('#troops').find('.unit.' + unit_class).parent().text().split('/')[1]);
         } else {
           $('#troops').find('.unit.' + unit_class).parent().find('input').val(count);
         }
@@ -811,6 +814,7 @@ function exec_user_task(cb: Function) {
 
         let unit_list: [string,number][] = [
           ['u1', 50]
+          , ['u3', 50]
           , ['u5', 100]
           , ['u6', 70]
         ];
