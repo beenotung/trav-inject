@@ -100,11 +100,8 @@ function groupBy<A>(f: (a: A)=>number, as: A[]): {[id: number]: A[]} {
 }
 
 function obj_to_array(o: any): Array<[string,any]> {
-  return Object.keys(o)
-    .map(k=> {
-      let res: [string,any] = [k, o[k]];
-      return res;
-    });
+  return <[string,any][]><any><any[][]>Object.keys(o)
+    .map(k=> [k, o[k]]);
 }
 
 function str_to_int(s: string): number {
@@ -130,7 +127,7 @@ function str_to_int(s: string): number {
 }
 
 /**
- * @param x : string, example: (1|-1)
+ * @param s : string, example: (1|-1)
  * @return number[], example: [1,-1]
  * */
 function str_to_xy(s: string): [number,number] {
@@ -545,8 +542,11 @@ class Farm {
   level: number;
   /* 0..3 */
   farm_type: number;
-  not_now: boolean;
-  under_construct: boolean;
+  good: boolean;
+  notNow: boolean;
+  maxLevel: boolean;
+  underConstruction: boolean;
+  // status:'good'|'not_now'|'max_level'|'under_construct';
 
   pathname() {
     return 'build.php?id=' + this.id;
@@ -576,8 +576,10 @@ function find_farm_info(cb: Function) {
         if (+level != res.data[i].level) {
           throw new Error('farm not matching');
         }
-        res.data[i].not_now = classStr.includes('notNow');
-        res.data[i].under_construct = classStr.includes('underConstruction');
+        res.data[i].good = classStr.includes('good');
+        res.data[i].notNow = classStr.includes('notNow');
+        res.data[i].underConstruction = classStr.includes('underConstruction');
+        res.data[i].maxLevel = classStr.includes('maxLevel');
         res.data[i].farm_type = classStr.split(' ').filter(x=>x.includes('gid')).map(x=>+x.replace('gid', ''))[0] - 1;
       });
     console.log('farms', res.data);
@@ -796,6 +798,7 @@ function exec_user_task(cb: Function) {
         if (count == void 0) {
           return str_to_int($('#troops').find('.unit.' + unit_class).parent().text().split('/')[1]);
         } else {
+          console.log('assign ' + count + ' ' + unit_class);
           $('#troops').find('.unit.' + unit_class).parent().find('input').val(count);
         }
       }
@@ -850,7 +853,7 @@ function exec_user_task(cb: Function) {
         .filter(i=>i >= offset)
         .filter((i, e) => {
           let amount = get_amount($(e).parent());
-          return +($(e).text()) / amount <= max_price;
+          return +($(e).text()) / amount < max_price;
         }).parent().first();
 
       if (row.length == 0) {
@@ -937,9 +940,9 @@ function find_build_target_farm(cb: Function) {
   console.log('find_build_target_farm');
   let buildingTasksItem = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype, true);
   let buildingTasks: BuildingTask[] = buildingTasksItem.data;
-  let farms: Farm[] = Item.load<Farm[]>(ItemKeys.farm_info).data.filter((farm: Farm)=>!farm.not_now);
+  let farms: Farm[] = Item.load<Farm[]>(ItemKeys.farm_info).data.filter((farm: Farm)=>farm.good);
   let production_info: ProductionInfo = Item.load<ProductionInfo>(ItemKeys.production_info, ProductionInfo.prototype).data;
-  let farmss: {[idx: number]: Farm[]} = groupBy(farm=>farm.farm_type, farms.filter(x=>!x.not_now));
+  let farmss: {[idx: number]: Farm[]} = groupBy(farm=>farm.farm_type, farms);
   let item = new Item<Farm>();
   try {
     let farm = obj_to_array(farmss)
@@ -1140,6 +1143,7 @@ module api {
    * @param cx : number -400..400
    * @param cy : number -400..400
    * @param zoom_level : number 1..3
+   * @param cb : Function callback
    * */
   export function get_map_data(cx: number, cy: number, zoom_level: number, cb: (tiles: Tile[])=>void) {
     let formData = new FormData();
@@ -1164,7 +1168,7 @@ module api {
       if (res.error) {
         throw new Error(res);
       } else {
-        cb(res.data.tiles.map((x: any)=>new Tile(x)));
+        cb(res.data['tiles'].map((x: any)=>new Tile(x)));
       }
     });
     request.open("POST", "ajax.php?cmd=mapPositionData");
