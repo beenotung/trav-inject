@@ -476,6 +476,13 @@ function DOMInit() {
       addCol(a);
     });
   }
+
+  /* the shortcut buttons */
+  $('.layoutButton.marketBlack').click(()=>location.replace('build.php?t=5&id=29'));
+  $('.layoutButton.barracksBlack').click(()=>location.replace('build.php?id=35'));
+  $('.layoutButton.stableBlack').click(()=>location.replace('build.php?id=38'));
+  $('.layoutButton.workshopBlack').click(()=>location.replace('build.php?id=33'));
+  $('.layoutButton.editWhite').click(()=>location.replace('build.php?id=23'));
 }
 
 function init() {
