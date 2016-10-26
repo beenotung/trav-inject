@@ -22,6 +22,7 @@ namespace ItemKeys {
   export const exec_build_target_farm = 'exec_build_target_farm';
   // export const quest_info = 'quest_info';
   export const max_price = 'max_price';
+  export const price_offset = 'price_offset';
   export const buy_filter = 'buy_filter';
 }
 // Object.keys(ItemKeys).forEach(x=>unsafe.set(ItemKeys, x, x));
@@ -362,21 +363,33 @@ function DOMInit() {
   /* enrich auction */
   if (isInPage('hero_auction.php')) {
     let container = $('<div>');
-    let label = $('<label style="margin-left: 10px">max price</label>');
-    let input = $('<input style="width: 50px">');
-    let start = $('<input type=button value="start" style="margin-left: 10px">');
-    let stop = $('<input type=button value="stop" style="margin-left: 10px">');
+    let label_max = $('<label style="margin-left: 5px">@price</label>');
+    let input_max = $('<input style="width: 35px">');
+    let label_offset = $('<label style="margin-left: 5px">offset</label>');
+    let input_offset = $('<input style="width: 20px">');
+    let start = $('<input type=button value="start" style="margin-left: 5px">');
+    let stop = $('<input type=button value="stop" style="margin-left: 5px">');
     let max_price = wrapLocalStorage(ItemKeys.max_price);
+    let price_offset = wrapLocalStorage(ItemKeys.price_offset);
     if (max_price()) {
-      input.val(max_price());
+      input_max.val(max_price());
     }
-    input.change(()=> {
-      if (isNumber(input.val())) {
-        max_price(+input.val());
+    if (price_offset()) {
+      input_offset.val(price_offset());
+    }
+    input_max.change(()=> {
+      if (isNumber(input_max.val())) {
+        max_price(+input_max.val());
       } else {
-        input.val(max_price());
+        input_max.val(max_price());
       }
-      console.log('updated max_price', input.val());
+    });
+    input_offset.change(()=> {
+      if (isNumber(input_offset.val())) {
+        price_offset(+input_offset.val());
+      } else {
+        input_offset.val(price_offset());
+      }
     });
     start.click(() => {
       localStorage[ItemKeys.buy_filter] = query('filter');
@@ -384,8 +397,9 @@ function DOMInit() {
       activate_user_task(AuctionTask.name);
     });
     stop.click(()=> clear_user_task());
-    label.append(input);
-    container.append(label, start, stop);
+    label_max.append(input_max);
+    label_offset.append(input_offset);
+    container.append(label_max, label_offset, start, stop);
     let clear = jQuery('.contentNavi.tabSubWrapper').find('.clear');
     clear.parent()[0].insertBefore(container[0], clear[0]);
 
@@ -842,7 +856,10 @@ function exec_user_task(cb: Function) {
 
       clear_user_task();
     } else if (isInPage('hero_auction.php')) {
-      let max_price = localStorage[ItemKeys.max_price];
+      let max_price = +localStorage[ItemKeys.max_price];
+      let price_offset = +localStorage[ItemKeys.price_offset];
+      if (!price_offset)
+        price_offset = 0;
       let offset = +user_task_step();
 
       function get_amount(row: JQuery) {
@@ -853,7 +870,8 @@ function exec_user_task(cb: Function) {
         .filter(i=>i >= offset)
         .filter((i, e) => {
           let amount = get_amount($(e).parent());
-          return +($(e).text()) / amount < max_price;
+          let price = +($(e).text());
+          return price <= max_price * amount + price_offset;
         }).parent().first();
 
       if (row.length == 0) {
@@ -874,7 +892,7 @@ function exec_user_task(cb: Function) {
           if (current_price <= target_price) {
             /* place order */
             console.log('submit good form');
-            row.parent().find('input.maxBid').val(max_price * get_amount(row));
+            row.parent().find('input.maxBid').val(max_price * get_amount(row) + price_offset);
             row.parent().find('button:submit').click();
           } else {
             console.log('skip this row');
