@@ -869,6 +869,7 @@ function exec_user_task(cb: Function) {
       if (!price_offset)
         price_offset = 0;
       let offset = +user_task_step();
+      let available_silver = str_to_int(jQuery('.ajaxReplaceableSilverAmount').first().text());
 
       function get_amount(row: JQuery) {
         return str_to_int(row.find('td.name').text().split('×')[0]);
@@ -879,7 +880,7 @@ function exec_user_task(cb: Function) {
         .filter((i, e) => {
           let amount = get_amount($(e).parent());
           let price = +($(e).text());
-          return price <= max_price * amount + price_offset;
+          return price <= max_price * amount + price_offset && price <= available_silver;
         }).parent().first();
 
       if (row.length == 0) {
