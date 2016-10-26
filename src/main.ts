@@ -37,6 +37,7 @@ let non_expire_item_keys = [
   , ItemKeys.user_task_name
   , ItemKeys.user_task_step
   , ItemKeys.max_price
+  , ItemKeys.price_offset
   , ItemKeys.buy_filter
 ];
 
