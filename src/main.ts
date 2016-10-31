@@ -361,6 +361,19 @@ function DOMInit() {
     }
   }
 
+  /* village position detail page (from map) */
+  {
+    if (isInPage('position_details.php')) {
+      let options = $('#content.positionDetails').find('.options').first();
+      let option = $('<div class="option">');
+      let a = $('<a class="a arrow">');
+      a.text('spy');
+      a.click(()=>activate_user_task(SpyTask.name));
+      option.append(a);
+      options.append(option);
+    }
+  }
+
   /* enrich auction */
   if (isInPage('hero_auction.php')) {
     let container = $('<div>');
@@ -812,7 +825,10 @@ function exec_user_task(cb: Function) {
       location.replace($('table').filter((i, e)=>e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
     } else if (isInPage('position_details.php')) {
       console.log('in position details page');
-      location.replace(jQuery('div.option').find('a').filter((i, e)=>$(e).attr('href').includes('build.php?id=39')).attr('href'));
+      location.replace(jQuery('div.option').find('a').filter((i, e) => {
+        var attr = $(e).attr('href');
+        return attr && attr.includes('build.php?id=39');
+      }).attr('href'));
     } else if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
       jQuery('div.option').find(':radio[value=4]').click();
 
