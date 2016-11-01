@@ -790,48 +790,111 @@ function init_var() {
 }
 namespace UserTask {
 }
+function rub_spy_comm(cb: Function): boolean {
+  const $ = jQuery;
+  if (isInPage('berichte.php')) {
+    location.replace($('table').filter((i, e)=>e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
+    return true;
+  } else if (isInPage('position_details.php')) {
+    console.log('in position details page');
+    location.replace(jQuery('div.option').find('a').filter((i, e) => {
+      var attr = $(e).attr('href');
+      return attr && attr.includes('build.php?id=39');
+    }).attr('href'));
+    return true;
+  } else if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
+    jQuery('div.option').find(':radio[value=4]').click();
+    return false;
+  }
+}
 class RubTask {
   total_res: number[];
   hill: number;
   target_res: number;
-}
-class SpyTask {
-}
-class AuctionTask {
-}
-function exec_user_task(cb: Function) {
-  const $ = jQuery;
-  console.log('exec user task');
-  if (localStorage[ItemKeys.is_doing_user_task]) {
+
+  execute(cb: Function) {
+    const $ = jQuery;
     let user_task_name = localStorage[ItemKeys.user_task_name];
     let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
-    console.log('user task step: ' + user_task_step());
     if (isInPage('berichte.php')) {
-      if (user_task_name == RubTask.name) {
-        let res = new RubTask();
-        console.log(0);
-        let $goods = $('table#attacker').find('.goods');
-        res.total_res = [];
-        res.total_res[0] = str_to_int($goods.find('.r1').parent().text());
-        res.total_res[1] = str_to_int($goods.find('.r2').parent().text());
-        res.total_res[2] = str_to_int($goods.find('.r3').parent().text());
-        res.total_res[3] = str_to_int($goods.find('.r4').parent().text());
-        res.hill = str_to_int($goods.find('.gebIcon').parent().text());
-        res.target_res = res.total_res.map(x=>Math.max(0, x - res.hill)).reduce((a, b)=>a + b);
-        console.log(res);
-        wrapLocalStorage(RubTask.name)(res);
+      let res = new RubTask();
+      console.log(0);
+      let $goods = $('table#attacker').find('.goods');
+      res.total_res = [];
+      res.total_res[0] = str_to_int($goods.find('.r1').parent().text());
+      res.total_res[1] = str_to_int($goods.find('.r2').parent().text());
+      res.total_res[2] = str_to_int($goods.find('.r3').parent().text());
+      res.total_res[3] = str_to_int($goods.find('.r4').parent().text());
+      res.hill = str_to_int($goods.find('.gebIcon').parent().text());
+      res.target_res = res.total_res.map(x=>Math.max(0, x - res.hill)).reduce((a, b)=>a + b);
+      console.log(res);
+      wrapLocalStorage(RubTask.name)(res);
+      rub_spy_comm(cb);
+    } else if (!rub_spy_comm(cb) && isInPage('build.php')) {
+      let assigned_cache: {[unit_class: string]: number} = {};
+
+      function number_of_unit(unit_class: string, count?: number) {
+        if (count == void 0) {
+          return str_to_int($('#troops').find('.unit.' + unit_class).parent().text().split('/')[1]);
+        } else {
+          count = Math.abs(count);
+          console.log('assign ' + count + ' ' + unit_class);
+          $('#troops').find('.unit.' + unit_class).parent().find('input').val(count);
+          assigned_cache[unit_class] = count;
+        }
       }
 
-      location.replace($('table').filter((i, e)=>e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
-    } else if (isInPage('position_details.php')) {
-      console.log('in position details page');
-      location.replace(jQuery('div.option').find('a').filter((i, e) => {
-        var attr = $(e).attr('href');
-        return attr && attr.includes('build.php?id=39');
-      }).attr('href'));
-    } else if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
-      jQuery('div.option').find(':radio[value=4]').click();
+      let res: RubTask = wrapLocalStorage(RubTask.name)();
 
+      /**@return resource left : number */
+      function choose_unit(className: string, cap: number, target_amount: number): number {
+        let n_unit_available = number_of_unit(className);
+        let n_unit_need = Math.round(target_amount / cap);
+        let n_unit_assign = Math.min(n_unit_available, n_unit_need);
+        number_of_unit(className, n_unit_assign);
+        return target_amount - n_unit_assign * cap;
+      }
+
+      let unit_list: [string,number][] = [
+        ['u1', 50]
+        , ['u3', 50]
+        , ['u5', 100]
+        , ['u6', 70]
+      ];
+
+      let res_left = res.target_res * 1.2;
+      unit_list.forEach(([name,cap])=> {
+        res_left = choose_unit(name, cap, res_left);
+      });
+
+      if (res_left > 0) {
+        console.log('amount of resource left: ', res_left);
+        // /* remove all values, manually send in multiple attack, due to different movement speed */
+        // unit_list.forEach(x=>number_of_unit(x[0], 0));
+      } else {
+        console.log('all resource will be rub');
+        // setTimeout(()=> $('#build').find(':submit').click());
+      }
+      if (unit_list.filter(x=>assigned_cache[x[0]] > 0).length == 1) {
+        setTimeout(()=> $('#build').find(':submit').click());
+      }
+
+      clear_user_task();
+    } else {
+      console.error('Invalid stage', {
+        task_name: user_task_name
+        , step: user_task_step()
+      });
+      throw new Error('Invalid stage');
+    }
+  }
+}
+class SpyTask {
+  execute(cb: Function) {
+    const $ = jQuery;
+    let user_task_name = localStorage[ItemKeys.user_task_name];
+    let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
+    if (!rub_spy_comm(cb) && isInPage('build.php')) {
       function number_of_unit(unit_class: string, count?: number) {
         if (count == void 0) {
           return str_to_int($('#troops').find('.unit.' + unit_class).parent().text().split('/')[1]);
@@ -841,90 +904,83 @@ function exec_user_task(cb: Function) {
         }
       }
 
-      if (user_task_name == RubTask.name) {
-        let res: RubTask = wrapLocalStorage(RubTask.name)();
-
-        /**@return resource left : number */
-        function choose_unit(className: string, cap: number, target_amount: number): number {
-          let n_unit_available = number_of_unit(className);
-          let n_unit_need = Math.round(target_amount / cap);
-          let n_unit_assign = Math.min(n_unit_available, n_unit_need);
-          number_of_unit(className, n_unit_assign);
-          return target_amount - n_unit_assign * cap;
-        }
-
-        let unit_list: [string,number][] = [
-          ['u1', 50]
-          , ['u3', 50]
-          , ['u5', 100]
-          , ['u6', 70]
-        ];
-
-        let res_left = res.target_res * 1.2;
-        unit_list.forEach(([name,cap])=> {
-          res_left = choose_unit(name, cap, res_left);
-        });
-
-        if (res_left > 0) {
-          console.log('amount of resource left: ', res_left);
-          // /* remove all values, manually send in multiple attack, due to different movement speed */
-          // unit_list.forEach(x=>number_of_unit(x[0], 0));
-        } else {
-          console.log('all resource will be rub');
-          // setTimeout(()=> $('#build').find(':submit').click());
-        }
-      } else { /* SpyTask */
+      let confirmBtn = jQuery('.green.rallyPointConfirm');
+      if (confirmBtn.length == 0) {
         number_of_unit('u4', 1);
-        setTimeout(()=> $('#build').find(':submit').click());
-      }
-
-      clear_user_task();
-    } else if (isInPage('hero_auction.php')) {
-      let max_price = +localStorage[ItemKeys.max_price];
-      let price_offset = +localStorage[ItemKeys.price_offset];
-      if (!price_offset)
-        price_offset = 0;
-      let offset = +user_task_step();
-      let available_silver = str_to_int(jQuery('.ajaxReplaceableSilverAmount').first().text());
-
-      function get_amount(row: JQuery) {
-        return str_to_int(row.find('td.name').text().split('×')[0]);
-      }
-
-      let row = $('td.silver')
-        .filter(i=>i >= offset)
-        .filter((i, e) => {
-          let amount = get_amount($(e).parent());
-          let price = +($(e).text());
-          return price <= max_price * amount + price_offset && price <= available_silver;
-        }).parent().first();
-
-      if (row.length == 0) {
-        console.log('cleared this page');
-        clear_user_task();
+        $('#build').find(':submit').click();
       } else {
-        if (row.find('.selected').length == 0) {
-          /* open menu */
-          console.log('open menu');
-          let a = row.find('td.bid').find('a.switchClosed');
-          unsafe.follow_href(a);
+        clear_user_task();
+        confirmBtn.click();
+      }
+    } else {
+      console.error('Invalid stage', {
+        task_name: user_task_name
+        , step: user_task_step()
+      });
+      throw new Error('Invalid stage');
+    }
+  }
+}
+class AuctionTask {
+  execute(cb: Function) {
+    const $ = jQuery;
+    let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
+    let max_price = +localStorage[ItemKeys.max_price];
+    let price_offset = +localStorage[ItemKeys.price_offset];
+    if (!price_offset)
+      price_offset = 0;
+    let offset = +user_task_step();
+    let available_silver = str_to_int(jQuery('.ajaxReplaceableSilverAmount').first().text());
+
+    function get_amount(row: JQuery) {
+      return str_to_int(row.find('td.name').text().split('×')[0]);
+    }
+
+    let row = $('td.silver')
+      .filter(i=>i >= offset)
+      .filter((i, e) => {
+        let amount = get_amount($(e).parent());
+        let price = +($(e).text());
+        return price <= max_price * amount + price_offset && price <= available_silver;
+      }).parent().first();
+
+    if (row.length == 0) {
+      console.log('cleared this page');
+      clear_user_task();
+    } else {
+      if (row.find('.selected').length == 0) {
+        /* open menu */
+        console.log('open menu');
+        let a = row.find('td.bid').find('a.switchClosed');
+        unsafe.follow_href(a);
+      } else {
+        /* check if current price is too high */
+        let target_price = max_price * get_amount(row);
+        let current_price = str_to_int(row.parent().find('input.maxBid').parent().find('span').first().text());
+        let selected_idx = $('#auction').find('tbody').find('tr').toArray().map((e, i)=>[i, e]).filter(x=>$(x[1]).find('.selected').length != 0)[0][0];
+        user_task_step(Math.max(selected_idx, offset) + 1);
+        if (current_price <= target_price) {
+          /* place order */
+          console.log('submit good form');
+          row.parent().find('input.maxBid').val(max_price * get_amount(row) + price_offset);
+          row.parent().find('button:submit').click();
         } else {
-          /* check if current price is too high */
-          let target_price = max_price * get_amount(row);
-          let current_price = str_to_int(row.parent().find('input.maxBid').parent().find('span').first().text());
-          let selected_idx = $('#auction').find('tbody').find('tr').toArray().map((e, i)=>[i, e]).filter(x=>$(x[1]).find('.selected').length != 0)[0][0];
-          user_task_step(Math.max(selected_idx, offset) + 1);
-          if (current_price <= target_price) {
-            /* place order */
-            console.log('submit good form');
-            row.parent().find('input.maxBid').val(max_price * get_amount(row) + price_offset);
-            row.parent().find('button:submit').click();
-          } else {
-            console.log('skip this row');
-            exec_user_task(cb);
-          }
+          console.log('skip this row');
+          exec_user_task(cb);
         }
       }
+    }
+  }
+}
+function exec_user_task(cb: Function) {
+  const $ = jQuery;
+  console.log('exec user task');
+  if (localStorage[ItemKeys.is_doing_user_task]) {
+    let user_task_name = localStorage[ItemKeys.user_task_name];
+    let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
+    console.log('user task step: ' + user_task_step());
+    if (typeof eval(user_task_name) === 'function') {
+      eval('new ' + user_task_name + ' ()').execute(cb);
     } else {
       console.error('Invalid user task', {
         task_name: user_task_name
@@ -979,7 +1035,6 @@ function findTask() {
 }
 
 function find_build_target_farm(cb: Function) {
-  const $ = jQuery;
   console.log('find_build_target_farm');
   let buildingTasksItem = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype, true);
   let buildingTasks: BuildingTask[] = buildingTasksItem.data;
