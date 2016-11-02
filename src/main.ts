@@ -203,6 +203,12 @@ module unsafe {
     return (<Function>o[func_name]).apply(o, args);
   }
 
+  export function use(o: any, f: Function) {
+    if (o) {
+      f(o);
+    }
+  }
+
   export function array_includes(array: any[], v: any): boolean {
     return get(array, 'includes').call(array, v);
   }
@@ -490,12 +496,13 @@ function DOMInit() {
     });
   }
 
-  /* the shortcut buttons */
-  $('.layoutButton.marketBlack').click(()=>location.replace('build.php?t=5&id=29'));
-  $('.layoutButton.barracksBlack').click(()=>location.replace('build.php?id=35'));
-  $('.layoutButton.stableBlack').click(()=>location.replace('build.php?id=38'));
-  $('.layoutButton.workshopBlack').click(()=>location.replace('build.php?id=33'));
+  /* override the shortcut buttons */
+  unsafe.use($('.layoutButton.marketBlack,.layoutButton.marketWhite')    [0], (e:HTMLElement)=>e.onclick = ()=>location.replace('build.php?t=5&id=29'));
+  unsafe.use($('.layoutButton.barracksBlack,.layoutButton.barracksWhite')[0], (e:HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=35'));
+  unsafe.use($('.layoutButton.stableBlack,.layoutButton.stableWhite')    [0], (e:HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=38'));
+  unsafe.use($('.layoutButton.workshopBlack,.layoutButton.workshopWhite')[0], (e:HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=33'));
   $('.layoutButton.editWhite').click(()=>location.replace('build.php?id=23'));
+  // $('.layoutButton.editWhite')[0].onclick = (()=>location.replace('build.php?id=23'));
 }
 
 function init() {
@@ -536,6 +543,9 @@ function query(key: string): any {
     console.error('more than one matched result:', res);
     throw new Error('more than one matched query result');
   }
+}
+function has_query(key: string): boolean {
+  return query(key) != void 0;
 }
 
 class BuildingTask {
@@ -792,7 +802,7 @@ namespace UserTask {
 }
 function rub_spy_comm(cb: Function): boolean {
   const $ = jQuery;
-  if (isInPage('berichte.php')) {
+  if (isInPage('berichte.php') && has_query('id') && !has_query('newdid')) {
     location.replace($('table').filter((i, e)=>e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
     return true;
   } else if (isInPage('position_details.php')) {
@@ -909,7 +919,7 @@ class SpyTask {
         number_of_unit('u4', 1);
         $('#build').find(':submit').click();
       } else {
-        clear_user_task();
+        // clear_user_task();
         confirmBtn.click();
       }
     } else {
