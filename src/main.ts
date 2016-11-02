@@ -497,10 +497,10 @@ function DOMInit() {
   }
 
   /* override the shortcut buttons */
-  unsafe.use($('.layoutButton.marketBlack,.layoutButton.marketWhite')    [0], (e:HTMLElement)=>e.onclick = ()=>location.replace('build.php?t=5&id=29'));
-  unsafe.use($('.layoutButton.barracksBlack,.layoutButton.barracksWhite')[0], (e:HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=35'));
-  unsafe.use($('.layoutButton.stableBlack,.layoutButton.stableWhite')    [0], (e:HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=38'));
-  unsafe.use($('.layoutButton.workshopBlack,.layoutButton.workshopWhite')[0], (e:HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=33'));
+  unsafe.use($('.layoutButton.marketBlack,.layoutButton.marketWhite')    [0], (e: HTMLElement)=>e.onclick = ()=>location.replace('build.php?t=5&id=29'));
+  unsafe.use($('.layoutButton.barracksBlack,.layoutButton.barracksWhite')[0], (e: HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=35'));
+  unsafe.use($('.layoutButton.stableBlack,.layoutButton.stableWhite')    [0], (e: HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=38'));
+  unsafe.use($('.layoutButton.workshopBlack,.layoutButton.workshopWhite')[0], (e: HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=33'));
   $('.layoutButton.editWhite').click(()=>location.replace('build.php?id=23'));
   // $('.layoutButton.editWhite')[0].onclick = (()=>location.replace('build.php?id=23'));
 }
