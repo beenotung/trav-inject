@@ -922,6 +922,10 @@ class SpyTask {
         // clear_user_task();
         confirmBtn.click();
       }
+      if (query('tt') == 1) {
+        document.body.textContent = '';
+        document.title = 'done';
+      }
     } else {
       console.error('Invalid stage', {
         task_name: user_task_name
