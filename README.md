@@ -43,14 +43,21 @@ However, you will have to paste the javascript code into console everytime the p
     - [x] Support if VIP is available (pending building task) (not tested)
  - [ ] Auto upgarde facilities (inner village buildings)
  - [ ] Auto train army
- - [ ] Auto send army
+ - [ ] Send army
+    - [x] Semi-auto
+    - [ ] Fully auto
  - [ ] Auto find sheep-like villages
+ - [x] Find 15-rice place for new village
+ - [ ] Find place according the green land resource
  - [ ] Auto find places for new villages
- - [ ] Auto trade (hero_auction)
+ - [ ] Trade (hero_auction)
+    - [x] Semi-auto
+    - [ ] Fully auto
  - [ ] Auto trade
     - [ ] Balance resource within self villages
     - [ ] To Alliance on excess resources
  - [ ] Multiple village support
+ - [ ] Show distance in spy report list
 
 ## Implementation Todo List
- - [ ] Read from dorf3 instead of dorf1
+ - [ ] Avoid sparse troop when rubbing
