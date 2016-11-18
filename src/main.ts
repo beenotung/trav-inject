@@ -24,6 +24,7 @@ namespace ItemKeys {
   export const max_price = 'max_price';
   export const price_offset = 'price_offset';
   export const buy_filter = 'buy_filter';
+  export const has_switch_closest_village = 'has_switch_closest_village';
 }
 // Object.keys(ItemKeys).forEach(x=>unsafe.set(ItemKeys, x, x));
 
@@ -39,6 +40,7 @@ let non_expire_item_keys = [
   , ItemKeys.max_price
   , ItemKeys.price_offset
   , ItemKeys.buy_filter
+  , ItemKeys.has_switch_closest_village
 ];
 
 /* time to refetch the Item from webpage into localStorage */
@@ -300,6 +302,21 @@ function clear_user_task() {
 function get_current_village_xy(): [number,number] {
   let coor: string = jQuery('#sidebarBoxVillagelist').find('.active').find('.coordinates').text();
   return str_to_xy(coor);
+}
+function get_all_village_xy(): [number,number][] {
+  return jQuery('#sidebarBoxVillagelist').find('.coordinates').map((i, e)=>jQuery(e).text()).toArray().map(str_to_xy);
+}
+function move_to_village_by_xy(target_xy: [number,number]) {
+  let q = jQuery;
+  let target_lis = q('#sidebarBoxVillagelist').find('.innerBox.content').find('li').filter((i, e)=> {
+    let xy = str_to_xy(q(e).text().split('(')[1].split(')')[0]);
+    return xy[0] == target_xy[0] && xy[1] == target_xy[1];
+  });
+  if (target_lis.length != 1) {
+    console.error('cannot find the village', target_xy);
+    throw new Error('cannot find the village');
+  }
+  unsafe.follow_href(target_lis.find('a')[0]);
 }
 function DOMInit() {
   const $ = jQuery;
@@ -811,10 +828,22 @@ namespace UserTask {
 function rub_spy_comm(cb: Function): boolean {
   const $ = jQuery;
   if (isInPage('berichte.php') && has_query('id') && !has_query('newdid')) {
+    wrapLocalStorage(ItemKeys.has_switch_closest_village)(false);
     location.replace($('table').filter((i, e)=>e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
     return true;
   } else if (isInPage('position_details.php')) {
     console.log('in position details page');
+    let flag = wrapLocalStorage(ItemKeys.has_switch_closest_village);
+    if (!flag()) {
+      flag(true);
+      let target_xy = str_to_xy($('.titleInHeader').find('.coordinatesWrapper').text());
+      let current_xy = get_current_village_xy();
+      let closest_xy = get_all_village_xy().reduce((acc, c)=> xy_to_dist(acc, target_xy) < xy_to_dist(c, target_xy) ? acc : c);
+      if (!(current_xy[0] == closest_xy[0] && current_xy[1] == closest_xy[1])) {
+        move_to_village_by_xy(closest_xy);
+        return true;
+      }
+    }
     if ($('.tabContainer').filter((i, e)=>!$(e).hasClass('hide')).find('tr').first().find('.iReport15').length == 0) {
       localStorage.setItem(ItemKeys.user_task_name, SpyTask.name);
     }
