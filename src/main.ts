@@ -804,6 +804,7 @@ function find_quest_info(cb: Function) {
 function main() {
   DOMInit();
   login() && init_var() && setTimeout(findTask);
+  document.title = 'ready';
 }
 
 function login(): boolean {
