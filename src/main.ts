@@ -146,7 +146,11 @@ function wrapLocalStorage(name: string): (o?: any)=>any {
       res = localStorage[name];
     } else if (arguments.length == 1) {
       res = localStorage[name];
-      localStorage[name] = JSON.stringify(arguments[0]);
+      if (typeof arguments[0] === 'string' || typeof arguments[0] === 'number') {
+        localStorage[name] = arguments[0];
+      } else {
+        localStorage[name] = JSON.stringify(arguments[0]);
+      }
     } else {
       throw new Error("Illegal argument: " + JSON.stringify(arguments));
     }
@@ -381,7 +385,7 @@ function DOMInit() {
   }
 
   /* enrich auction */
-  if (isInPage('hero_auction.php')) {
+  if (isInPage('hero.php') && query('t') == 4) {
     let container = $('<div>');
     let label_max = $('<label style="margin-left: 5px">@price</label>');
     let input_max = $('<input style="width: 35px">');
@@ -685,6 +689,7 @@ namespace HeroStatus {
   export const move_in = 'move_in';
   export const help_out = 'help_out';
   export const help_arrived = 'help_arrived';
+  export const dead = 'dead';
 }
 class HeroAdvanceInfo {
   numberOfAdvance: number;
@@ -704,6 +709,9 @@ function find_hero_advance_info(cb: Function) {
   switch (statusClass) {
     case'heroStatus103':
       res.data.heroStatus = HeroStatus.help_arrived;
+      break;
+    case 'heroStatus101':
+      res.data.heroStatus = HeroStatus.dead;
       break;
     case 'heroStatus100':
       res.data.heroStatus = HeroStatus.in_home;
@@ -740,11 +748,11 @@ function exec_hero_advance_info(cb: Function) {
   res.name = ItemKeys.exec_hero_advance_info;
   if (heroAdvanceInfo.heroStatus == HeroStatus.in_home && heroAdvanceInfo.numberOfAdvance > 0) {
     console.log('directing hero to go advance');
-    if (!isInPage('hero_adventure.php', 'start_adventure.php')) {
-      location.replace('/hero_adventure.php');
+    if (!isInPage('hero.php', 'start_adventure.php')) {
+      location.replace('/hero.php?t=3');
       return;
     } else {
-      if (isInPage('hero_adventure.php')) {
+      if (isInPage('hero.php')) {
         let res = jQuery('#adventureListForm').find('tr').find('a.gotoAdventure');
         console.log('res', res);
         res[0].click();
@@ -807,6 +815,9 @@ function rub_spy_comm(cb: Function): boolean {
     return true;
   } else if (isInPage('position_details.php')) {
     console.log('in position details page');
+    if ($('.tabContainer').filter((i, e)=>!$(e).hasClass('hide')).find('tr').first().find('.iReport15').length == 0) {
+      localStorage.setItem(ItemKeys.user_task_name, SpyTask.name);
+    }
     location.replace(jQuery('div.option').find('a').filter((i, e) => {
       var attr = $(e).attr('href');
       return attr && attr.includes('build.php?id=39');
@@ -937,6 +948,9 @@ class SpyTask {
 }
 class AuctionTask {
   execute(cb: Function) {
+    if (!(isInPage('hero.php') && query('t') == 4)) {
+      return;
+    }
     const $ = jQuery;
     let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
     let max_price = +localStorage[ItemKeys.max_price];
@@ -991,6 +1005,10 @@ function exec_user_task(cb: Function) {
   console.log('exec user task');
   if (localStorage[ItemKeys.is_doing_user_task]) {
     let user_task_name = localStorage[ItemKeys.user_task_name];
+    try {
+      user_task_name = JSON.parse(user_task_name);
+    } catch (e) {
+    }
     let user_task_step = wrapLocalStorage(ItemKeys.user_task_step);
     console.log('user task step: ' + user_task_step());
     if (typeof eval(user_task_name) === 'function') {
