@@ -835,7 +835,7 @@ function rub_spy_comm(cb: Function): boolean {
   } else if (isInPage('position_details.php')) {
     console.log('in position details page');
     let flag = wrapLocalStorage(ItemKeys.has_switch_closest_village);
-    if (!flag()) {
+    if (!flag() && wrapLocalStorage(ItemKeys.user_task_name)() != SpyTask.name) {
       flag(true);
       let target_xy = str_to_xy($('.titleInHeader').find('.coordinatesWrapper').text());
       let current_xy = get_current_village_xy();
@@ -889,6 +889,9 @@ class RubTask {
           return str_to_int($('#troops').find('.unit.' + unit_class).parent().text().split('/')[1]);
         } else {
           count = Math.abs(count);
+          if (count != 0 && count < 10) {
+            count = 0;
+          }
           console.log('assign ' + count + ' ' + unit_class);
           $('#troops').find('.unit.' + unit_class).parent().find('input').val(count);
           assigned_cache[unit_class] = count;
