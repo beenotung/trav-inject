@@ -1,5 +1,5 @@
 import {config} from './config';
-import {isNumber, Random, noop} from '../lib/jslib/es5/dist/utils-es5';
+import {isNumber, toNumber, Random, noop} from '../lib/jslib/es5/dist/utils-es5';
 import {require as JSRequire} from '../lib/jslib/es6/dist/es6/src/utils-es6'
 
 declare function $(s: string): HTMLCollection;
@@ -175,11 +175,14 @@ function single(single: any[]): any {
 }
 
 function xy_to_dist(xy1: [number,number], xy2: [number,number]): number {
-  console.log('xy_to_dist', xy1, xy2);
   return Math.sqrt(
     Math.pow(xy1[0] - xy2[0], 2)
     + Math.pow(xy1[1] - xy2[1], 2)
   )
+}
+
+function xy_to_grid_dist(xy1: [number,number], xy2: [number,number]): number {
+  return Math.abs(xy1[0] - xy2[0]) + Math.abs(xy1[1] - xy2[1]);
 }
 
 module unsafe {
@@ -333,6 +336,28 @@ function DOMInit() {
     // document.body.appendChild(resetBtn);
     $('#pageLinks').prepend(resetBtn);
   }
+
+  add_button('brick-v', ()=> {
+    let xy = get_current_village_xy();
+    api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[])=> {
+      // console.log({tiles: tiles});
+      let report_html = 'center: ' + xy[0] + '|' + xy[1] + '<hr>';
+      report_html += tiles.filter((x: api.Tile)=>x.is_free_village).filter(x=>x.farms[1] > 4)
+        .sort((a, b)=> {
+          let da = Math.abs(xy[0] - a.x) + Math.abs(xy[1] - a.y);
+          let db = Math.abs(xy[0] - b.x) + Math.abs(xy[1] - b.y);
+          return da == db ? 0 :
+            da < db ? -1 : 1;
+        })
+        .map(x=>
+          '<a href="http://tx3.travian.tw/position_details.php?x=' + x.x + '&y=' + x.y + '">' + x.x + '|' + x.y + '</a>'
+        ).join('<br>');
+      let div = document.createElement('div');
+      div.innerHTML = report_html;
+      document.body.appendChild(div);
+      unsafe.method($(div), 'dialog');
+    });
+  });
 
   add_button('15-rice', ()=> {
     let xy = get_current_village_xy();
@@ -1285,15 +1310,32 @@ module api {
     is_free_greenland: boolean;
     is_free_village: boolean;
     farms: number[];
+    farm_bonuses: number[];
 
     constructor(raw: any) {
+      let $ = jQuery;
       Object.assign(this, raw);
       this.x *= 1;
       this.y *= 1;
+      if (this.y == 155 && this.x == -35) {
+        console.log('break');
+      }
       if (this.c) {
         let cs = this.c.split(' ').map(x=>x.substr(1, x.length - 2));
         this.is_free_greenland = unsafe.array_includes(cs, 'k.fo');
         this.is_free_village = unsafe.array_includes(cs, 'k.vt');
+        let e = $(new DOMParser().parseFromString(this.t, 'text/html'));
+        this.farm_bonuses = [0, 0, 0, 0];
+        e.text().split(')')[1].split('%').filter(s=>s.length > 1)
+          .forEach(s=> {
+            let ss: string[] = s.split('}');
+            let type = toNumber(ss[0].split('r')[1]);
+            let quantity = toNumber(ss[ss.length - 1]);
+            this.farm_bonuses[type] = quantity;
+          });
+        if (this.is_free_greenland) {
+
+        }
         if (this.is_free_village) {
           let regExp = /k\.f[1-9][1-9]?/;
           let farm_class = single(cs.filter(x=>regExp.test(x)));
@@ -1309,6 +1351,7 @@ module api {
    * @param cb : Function callback
    * */
   export function get_map_data(cx: number, cy: number, zoom_level: number, cb: (tiles: Tile[])=>void) {
+    console.log('get_map_data');
     let formData = new FormData();
     /*
      cmd:mapPositionData
