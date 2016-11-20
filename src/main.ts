@@ -89,6 +89,9 @@ function newId(): number {
 function last<A>(xs: A[]): A {
   return xs[xs.length - 1];
 }
+function sum(xs: number[]): number {
+  return xs.reduce((acc, c)=>acc + c, 0)
+}
 
 function groupBy<A>(f: (a: A)=>number, as: A[]): {[id: number]: A[]} {
   let res: {[id: number]: A[]} = {};
@@ -183,6 +186,10 @@ function xy_to_dist(xy1: [number,number], xy2: [number,number]): number {
 
 function xy_to_grid_dist(xy1: [number,number], xy2: [number,number]): number {
   return Math.abs(xy1[0] - xy2[0]) + Math.abs(xy1[1] - xy2[1]);
+}
+
+function greenland_xy_in_range(src: [number,number], dest: [number,number]) {
+  return Math.abs(src[0] - dest[0]) <= 3 && Math.abs(src[1] - dest[1]) <= 3;
 }
 
 module unsafe {
@@ -321,6 +328,9 @@ function move_to_village_by_xy(target_xy: [number,number]) {
   }
   unsafe.follow_href(target_lis.find('a')[0]);
 }
+function from_xy(o: {x: number,y: number}): [number,number] {
+  return [o.x, o.y];
+}
 function DOMInit() {
   const $ = jQuery;
 
@@ -337,27 +347,43 @@ function DOMInit() {
     $('#pageLinks').prepend(resetBtn);
   }
 
-  add_button('brick-v', ()=> {
-    let xy = get_current_village_xy();
-    api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[])=> {
-      // console.log({tiles: tiles});
-      let report_html = 'center: ' + xy[0] + '|' + xy[1] + '<hr>';
-      report_html += tiles.filter((x: api.Tile)=>x.is_free_village).filter(x=>x.farms[1] > 4)
-        .sort((a, b)=> {
-          let da = Math.abs(xy[0] - a.x) + Math.abs(xy[1] - a.y);
-          let db = Math.abs(xy[0] - b.x) + Math.abs(xy[1] - b.y);
-          return da == db ? 0 :
-            da < db ? -1 : 1;
-        })
-        .map(x=>
-          '<a href="http://tx3.travian.tw/position_details.php?x=' + x.x + '&y=' + x.y + '">' + x.x + '|' + x.y + '</a>'
-        ).join('<br>');
-      let div = document.createElement('div');
-      div.innerHTML = report_html;
-      document.body.appendChild(div);
-      unsafe.method($(div), 'dialog');
+  function res_village(res_idx: number, name: string) {
+    add_button(name, ()=> {
+      let xy = get_current_village_xy();
+      api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[])=> {
+        // console.log({tiles: tiles});
+        let report_html = 'center: ' + xy[0] + '|' + xy[1] + '<hr>';
+        report_html += tiles.filter((x: api.Tile)=>x.is_free_village)
+          .filter(x=>x.farms[res_idx] > 4)
+          .filter(t=>greenland_xy_in_range(xy, [t.x, t.y]))
+          .filter(t=>
+            tiles
+              .filter(g=>g.is_free_greenland)
+              .filter(g=>greenland_xy_in_range(from_xy(g), from_xy(t)))
+              .filter(g=>g.farm_bonuses[res_idx] > 25 || sum(g.farm_bonuses) > 25)
+              .length > 0
+          )
+          .sort((a, b)=> {
+            if (a.farm_bonuses[res_idx] > b.farm_bonuses[res_idx]) {
+              return -1
+            } else if (a.farm_bonuses[res_idx] < b.farm_bonuses[res_idx]) {
+              return 1;
+            }
+            let da = Math.abs(xy[0] - a.x) + Math.abs(xy[1] - a.y);
+            let db = Math.abs(xy[0] - b.x) + Math.abs(xy[1] - b.y);
+            return da == db ? 0 :
+              da < db ? -1 : 1;
+          })
+          .map(x=>
+            '<a href="http://tx3.travian.tw/position_details.php?x=' + x.x + '&y=' + x.y + '">' + x.x + '|' + x.y + '</a>'
+          ).join('<br>');
+        let div = document.createElement('div');
+        div.innerHTML = report_html;
+        document.body.appendChild(div);
+        unsafe.method($(div), 'dialog');
+      });
     });
-  });
+  }
 
   add_button('15-rice', ()=> {
     let xy = get_current_village_xy();
@@ -380,6 +406,10 @@ function DOMInit() {
       unsafe.method($(div), 'dialog');
     });
   });
+  res_village(3, 'rice-v');
+  res_village(2, 'iron-v');
+  res_village(1, 'brick-v');
+  res_village(0, 'wood-v');
 
   add_button('reset inject tool', ()=> {
     Object.keys(ItemKeys).forEach(x=>localStorage.removeItem(x));
@@ -1325,16 +1355,16 @@ module api {
         this.is_free_greenland = unsafe.array_includes(cs, 'k.fo');
         this.is_free_village = unsafe.array_includes(cs, 'k.vt');
         let e = $(new DOMParser().parseFromString(this.t, 'text/html'));
+        let label = e.text();
         this.farm_bonuses = [0, 0, 0, 0];
-        e.text().split(')')[1].split('%').filter(s=>s.length > 1)
-          .forEach(s=> {
-            let ss: string[] = s.split('}');
-            let type = toNumber(ss[0].split('r')[1]);
-            let quantity = toNumber(ss[ss.length - 1]);
-            this.farm_bonuses[type] = quantity;
-          });
         if (this.is_free_greenland) {
-
+          label.split(')')[1].split('%').filter(s=>s.length > 1)
+            .forEach(s=> {
+              let ss: string[] = s.split('}');
+              let type = toNumber(ss[0].split('r')[1]);
+              let quantity = toNumber(ss[ss.length - 1]);
+              this.farm_bonuses[type] = quantity;
+            });
         }
         if (this.is_free_village) {
           let regExp = /k\.f[1-9][1-9]?/;
