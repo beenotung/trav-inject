@@ -55,7 +55,7 @@ function notDefined(o: any) {
 }
 
 function id<A>(a: A): ()=>A {
-  return ()=>a;
+  return () => a;
 }
 
 function has(key: string) {
@@ -90,12 +90,12 @@ function last<A>(xs: A[]): A {
   return xs[xs.length - 1];
 }
 function sum(xs: number[]): number {
-  return xs.reduce((acc, c)=>acc + c, 0)
+  return xs.reduce((acc, c) => acc + c, 0)
 }
 
 function groupBy<A>(f: (a: A)=>number, as: A[]): {[id: number]: A[]} {
   let res: {[id: number]: A[]} = {};
-  as.forEach(a=> {
+  as.forEach(a => {
     let i = f(a);
     if (res[i]) {
       res[i].push(a);
@@ -108,11 +108,11 @@ function groupBy<A>(f: (a: A)=>number, as: A[]): {[id: number]: A[]} {
 
 function obj_to_array(o: any): Array<[string,any]> {
   return <[string,any][]><any><any[][]>Object.keys(o)
-    .map(k=> [k, o[k]]);
+    .map(k => [k, o[k]]);
 }
 
 function str_to_int(s: string): number {
-  return +s.split('').filter(x=>
+  return +s.split('').filter(x =>
     x == '0'
     || x == '1'
     || x == '2'
@@ -125,7 +125,7 @@ function str_to_int(s: string): number {
     || x == '9'
     || x == ','
     || x == '-'
-  ).reduce((acc, c)=> {
+  ).reduce((acc, c) => {
     if (c == ',')
       return acc;
     else
@@ -230,7 +230,7 @@ module unsafe {
   }
 
   export function newObject<A>(constructor: any): (o: any)=>A {
-    return o=>new constructor(o);
+    return o => new constructor(o);
   }
 
   export function follow_href(a: any) {
@@ -275,7 +275,7 @@ class Item<A> {
 
   static load<A>(name: string, prototype?: any, isArray = false): Item<A> {
     let error = new Error('Item ' + name + ' not found');
-    let item = getOrElse<A>(name, ()=> {
+    let item = getOrElse<A>(name, () => {
       console.error(error);
       /* cannot just throw the Error, webpack-typescript cannot understand this :( */
       return null;
@@ -291,7 +291,7 @@ class Item<A> {
     if (prototype) {
       if (isArray) {
         Object.setPrototypeOf(item.data, Array.prototype);
-        (<any[]><any>item.data).forEach(x=>Object.setPrototypeOf(x, prototype));
+        (<any[]><any>item.data).forEach(x => Object.setPrototypeOf(x, prototype));
       } else {
         Object.setPrototypeOf(item.data, prototype);
       }
@@ -314,11 +314,11 @@ function get_current_village_xy(): [number,number] {
   return str_to_xy(coor);
 }
 function get_all_village_xy(): [number,number][] {
-  return jQuery('#sidebarBoxVillagelist').find('.coordinates').map((i, e)=>jQuery(e).text()).toArray().map(str_to_xy);
+  return jQuery('#sidebarBoxVillagelist').find('.coordinates').map((i, e) => jQuery(e).text()).toArray().map(str_to_xy);
 }
 function move_to_village_by_xy(target_xy: [number,number]) {
   let q = jQuery;
-  let target_lis = q('#sidebarBoxVillagelist').find('.innerBox.content').find('li').filter((i, e)=> {
+  let target_lis = q('#sidebarBoxVillagelist').find('.innerBox.content').find('li').filter((i, e) => {
     let xy = str_to_xy(q(e).text().split('(')[1].split(')')[0]);
     return xy[0] == target_xy[0] && xy[1] == target_xy[1];
   });
@@ -348,22 +348,22 @@ function DOMInit() {
   }
 
   function res_village(res_idx: number, name: string) {
-    add_button(name, ()=> {
+    add_button(name, () => {
       let xy = get_current_village_xy();
-      api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[])=> {
+      api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[]) => {
         // console.log({tiles: tiles});
         let report_html = 'center: ' + xy[0] + '|' + xy[1] + '<hr>';
-        report_html += tiles.filter((x: api.Tile)=>x.is_free_village)
-          .filter(x=>x.farms[res_idx] > 4)
-          .filter(t=>greenland_xy_in_range(xy, [t.x, t.y]))
-          .filter(t=>
+        report_html += tiles.filter((x: api.Tile) => x.is_free_village)
+          .filter(x => x.farms[res_idx] > 4)
+          .filter(t => greenland_xy_in_range(xy, [t.x, t.y]))
+          .filter(t =>
             tiles
-              .filter(g=>g.is_free_greenland)
-              .filter(g=>greenland_xy_in_range(from_xy(g), from_xy(t)))
-              .filter(g=>g.farm_bonuses[res_idx] > 25 || sum(g.farm_bonuses) > 25)
+              .filter(g => g.is_free_greenland)
+              .filter(g => greenland_xy_in_range(from_xy(g), from_xy(t)))
+              .filter(g => g.farm_bonuses[res_idx] > 25 || sum(g.farm_bonuses) > 25)
               .length > 0
           )
-          .sort((a, b)=> {
+          .sort((a, b) => {
             if (a.farm_bonuses[res_idx] > b.farm_bonuses[res_idx]) {
               return -1
             } else if (a.farm_bonuses[res_idx] < b.farm_bonuses[res_idx]) {
@@ -374,7 +374,7 @@ function DOMInit() {
             return da == db ? 0 :
               da < db ? -1 : 1;
           })
-          .map(x=>
+          .map(x =>
             '<a href="http://tx3.travian.tw/position_details.php?x=' + x.x + '&y=' + x.y + '">' + x.x + '|' + x.y + '</a>'
           ).join('<br>');
         let div = document.createElement('div');
@@ -385,19 +385,19 @@ function DOMInit() {
     });
   }
 
-  add_button('15-rice', ()=> {
+  add_button('15-rice', () => {
     let xy = get_current_village_xy();
-    api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[])=> {
+    api.get_map_data(xy[0], xy[1], 3, (tiles: api.Tile[]) => {
       // console.log({tiles: tiles});
       let report_html = 'center: ' + xy[0] + '|' + xy[1] + '<hr>';
-      report_html += tiles.filter((x: api.Tile)=>x.is_free_village).filter(x=>x.farms[3] == 15)
-        .sort((a, b)=> {
+      report_html += tiles.filter((x: api.Tile) => x.is_free_village).filter(x => x.farms[3] == 15)
+        .sort((a, b) => {
           let da = Math.abs(xy[0] - a.x) + Math.abs(xy[1] - a.y);
           let db = Math.abs(xy[0] - b.x) + Math.abs(xy[1] - b.y);
           return da == db ? 0 :
             da < db ? -1 : 1;
         })
-        .map(x=>
+        .map(x =>
           '<a href="http://tx3.travian.tw/position_details.php?x=' + x.x + '&y=' + x.y + '">' + x.x + '|' + x.y + '</a>'
         ).join('<br>');
       let div = document.createElement('div');
@@ -411,8 +411,8 @@ function DOMInit() {
   res_village(1, 'brick-v');
   res_village(0, 'wood-v');
 
-  add_button('reset inject tool', ()=> {
-    Object.keys(ItemKeys).forEach(x=>localStorage.removeItem(x));
+  add_button('reset inject tool', () => {
+    Object.keys(ItemKeys).forEach(x => localStorage.removeItem(x));
     location.replace('dorf1.php');
   });
 
@@ -434,12 +434,12 @@ function DOMInit() {
       /* send rub from report */
       let a_rub = $('<a style="float: none;padding: 15px">rub</a>');
       container.append(a_rub);
-      a_rub.click(()=>activate_user_task(RubTask.name));
+      a_rub.click(() => activate_user_task(RubTask.name));
 
       /* send spy from report */
       let a_spy = $('<a style="float: none;padding: 15px">spy</a>');
       container.append(a_spy);
-      a_spy.click(()=>activate_user_task(SpyTask.name));
+      a_spy.click(() => activate_user_task(SpyTask.name));
     }
   }
 
@@ -450,7 +450,7 @@ function DOMInit() {
       let option = $('<div class="option">');
       let a = $('<a class="a arrow">');
       a.text('spy');
-      a.click(()=>activate_user_task(SpyTask.name));
+      a.click(() => activate_user_task(SpyTask.name));
       option.append(a);
       options.append(option);
     }
@@ -473,14 +473,14 @@ function DOMInit() {
     if (price_offset()) {
       input_offset.val(price_offset());
     }
-    input_max.change(()=> {
+    input_max.change(() => {
       if (isNumber(input_max.val())) {
         max_price(+input_max.val());
       } else {
         input_max.val(max_price());
       }
     });
-    input_offset.change(()=> {
+    input_offset.change(() => {
       if (isNumber(input_offset.val())) {
         price_offset(+input_offset.val());
       } else {
@@ -492,7 +492,7 @@ function DOMInit() {
       wrapLocalStorage(ItemKeys.user_task_step)(0);
       activate_user_task(AuctionTask.name);
     });
-    stop.click(()=> clear_user_task());
+    stop.click(() => clear_user_task());
     label_max.append(input_max);
     label_offset.append(input_offset);
     container.append(label_max, label_offset, start, stop);
@@ -501,11 +501,11 @@ function DOMInit() {
 
     /* show ave price */
     {
-      $('table').find('thead').find('th.silver').each((i, e)=> {
+      $('table').find('thead').find('th.silver').each((i, e) => {
         let th_silver = $(e);
         let avg: number;
 
-        let amount_price_pairs = th_silver.parent().parent().parent().find('tbody').find('td.silver').parent().toArray().map(e=> {
+        let amount_price_pairs = th_silver.parent().parent().parent().find('tbody').find('td.silver').parent().toArray().map(e => {
           let row = $(e);
           let price = str_to_int(row.find('td.silver').text());
           let amount = str_to_int(row.find('td.name').text().split('×')[0]);
@@ -515,13 +515,13 @@ function DOMInit() {
           return;
 
         let [sum_amount,sum_price]=amount_price_pairs
-          .reduce((acc, c)=>[acc[0] + c[0], acc[1] + c[1]]);
+          .reduce((acc, c) => [acc[0] + c[0], acc[1] + c[1]]);
         avg = sum_price / sum_amount;
 
         let lower_guess = amount_price_pairs
-          .map(([amount,price])=> price / amount)
+          .map(([amount,price]) => price / amount)
           .reverse()
-          .reduce((acc, c)=> {
+          .reduce((acc, c) => {
             // console.log({acc: acc, c: c});
             if (c > acc)
               return acc * 0.8 + c * 0.2;
@@ -529,8 +529,8 @@ function DOMInit() {
               return acc * 0.5 + c * 0.5;
           });
 
-        let min = amount_price_pairs.map(([n, p])=>p / n).reduce((acc, c)=>Math.min(acc, c));
-        let max = amount_price_pairs.map(([n, p])=>p / n).reduce((acc, c)=>Math.max(acc, c));
+        let min = amount_price_pairs.map(([n, p]) => p / n).reduce((acc, c) => Math.min(acc, c));
+        let max = amount_price_pairs.map(([n, p]) => p / n).reduce((acc, c) => Math.max(acc, c));
 
         th_silver.append($('<span title="average"> ' + unsafe.method(Number, 'round', avg, 1) + '</span>'));
         th_silver.append($('<span title="min"> ' + unsafe.method(Number, 'round', min, 1) + '</span>'));
@@ -550,7 +550,7 @@ function DOMInit() {
     header.append($('<th>distance</th>'));
     header.append($('<th>spy</th>'));
     let self_xy = get_current_village_xy();
-    table.find('tbody').find('tr').each((i, e)=> {
+    table.find('tbody').find('tr').each((i, e) => {
       let row = $(e);
       let coor = row.find('.coords');
 
@@ -564,7 +564,7 @@ function DOMInit() {
       let dist = xy_to_dist(self_xy, target_xy);
       addCol($('<span>' + unsafe.method(Number, 'round', dist, 1) + '</span>'));
       let a = $('<a>spy</a>');
-      a.click(()=> {
+      a.click(() => {
         activate_user_task(SpyTask.name, false);
         location.replace('build.php?id=39&tt=2&z=' + Travian.Game.Map.xy2id(target_xy[0], target_xy[1]))
       });
@@ -573,11 +573,11 @@ function DOMInit() {
   }
 
   /* override the shortcut buttons */
-  unsafe.use($('.layoutButton.marketBlack,.layoutButton.marketWhite')    [0], (e: HTMLElement)=>e.onclick = ()=>location.replace('build.php?t=5&id=29'));
-  unsafe.use($('.layoutButton.barracksBlack,.layoutButton.barracksWhite')[0], (e: HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=35'));
-  unsafe.use($('.layoutButton.stableBlack,.layoutButton.stableWhite')    [0], (e: HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=38'));
-  unsafe.use($('.layoutButton.workshopBlack,.layoutButton.workshopWhite')[0], (e: HTMLElement)=>e.onclick = ()=>location.replace('build.php?id=33'));
-  $('.layoutButton.editWhite').click(()=>location.replace('build.php?id=23'));
+  unsafe.use($('.layoutButton.marketBlack,.layoutButton.marketWhite')    [0], (e: HTMLElement) => e.onclick = () => location.replace('build.php?t=5&id=29'));
+  unsafe.use($('.layoutButton.barracksBlack,.layoutButton.barracksWhite')[0], (e: HTMLElement) => e.onclick = () => location.replace('build.php?id=35'));
+  unsafe.use($('.layoutButton.stableBlack,.layoutButton.stableWhite')    [0], (e: HTMLElement) => e.onclick = () => location.replace('build.php?id=38'));
+  unsafe.use($('.layoutButton.workshopBlack,.layoutButton.workshopWhite')[0], (e: HTMLElement) => e.onclick = () => location.replace('build.php?id=33'));
+  $('.layoutButton.editWhite').click(() => location.replace('build.php?id=23'));
   // $('.layoutButton.editWhite')[0].onclick = (()=>location.replace('build.php?id=23'));
 }
 
@@ -587,7 +587,7 @@ function init() {
     let s = document.createElement('script');
     s.src = 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js';
     let ori$ = window[<number><any>'$'];
-    s.onload = ()=> {
+    s.onload = () => {
       window[<number><any>'$'] = ori$;
       JSRequire.load('http://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css', false, true, eval);
       JSRequire.load('https://jqueryui.com/resources/demos/style.css', false, true, eval);
@@ -606,11 +606,11 @@ function init() {
 setTimeout(init);
 
 function isInPage(...filenames: string[]) {
-  return filenames.some(filename=>location.pathname == '/' + filename);
+  return filenames.some(filename => location.pathname == '/' + filename);
 }
 
 function query(key: string): any {
-  let res = location.search.substring(1).split('&').filter(x=>x.indexOf(key + '=') == 0).map(x=>x.split('='));
+  let res = location.search.substring(1).split('&').filter(x => x.indexOf(key + '=') == 0).map(x => x.split('='));
   if (res.length == 0)
     return void 0;
   else if (res.length == 1)
@@ -637,18 +637,18 @@ function find_building_task_list(cb: Function) {
     let res = new Item<BuildingTask[]>();
     res.data = $('.buildingList')
       .find('li')
-      .map((i, e)=> {
+      .map((i, e) => {
         let res = new BuildingTask();
-        res.buildingName = $(e).find('.name').text().split('\t').filter(x=>x.length > 0)[1];
-        res.buildingLevel = $(e).find('.lvl').text().split(' ').filter(isNumber).map(x=>+x)[0];
+        res.buildingName = $(e).find('.name').text().split('\t').filter(x => x.length > 0)[1];
+        res.buildingLevel = $(e).find('.lvl').text().split(' ').filter(isNumber).map(x => +x)[0];
         res.buildDuration = +$(e).find('span.timer').attr('value') * 1000;
         res.finishTime = Date.now() + res.buildDuration;
         // console.log('building task', res);
         return res;
       }).toArray();
     if (res.data.length > 0) {
-      res.expire_period = res.data.map(x=>x.buildDuration).reduce((acc, c)=>Math.max(acc, c));
-      res.expire_date = res.data.map(x=>x.finishTime).reduce((acc, c)=>Math.max(acc, c));
+      res.expire_period = res.data.map(x => x.buildDuration).reduce((acc, c) => Math.max(acc, c));
+      res.expire_date = res.data.map(x => x.finishTime).reduce((acc, c) => Math.max(acc, c));
     }
     // console.log('building task list', res.data);
     store(ItemKeys.building_task_list, res);
@@ -679,8 +679,8 @@ function find_farm_info(cb: Function) {
   if (isInPage('dorf1.php')) {
     let res = new Item<Farm[]>();
     res.data = jQuery('map').find('area')
-      .filter((i, e)=>$(e).attr('href').includes('build'))
-      .map((i, e)=> {
+      .filter((i, e) => $(e).attr('href').includes('build'))
+      .map((i, e) => {
         let xs = $(e).attr('alt').split(' ');
         let res = new Farm();
         res.id = i + 1;
@@ -690,7 +690,7 @@ function find_farm_info(cb: Function) {
       })
       .toArray();
     jQuery('#village_map').find('.level')
-      .each((i, e)=> {
+      .each((i, e) => {
         let $e = $(e);
         let classStr = $e.attr('class');
         let level = last(classStr.split('level'));
@@ -701,7 +701,7 @@ function find_farm_info(cb: Function) {
         res.data[i].notNow = classStr.includes('notNow');
         res.data[i].underConstruction = classStr.includes('underConstruction');
         res.data[i].maxLevel = classStr.includes('maxLevel');
-        res.data[i].farm_type = classStr.split(' ').filter(x=>x.includes('gid')).map(x=>+x.replace('gid', ''))[0] - 1;
+        res.data[i].farm_type = classStr.split(' ').filter(x => x.includes('gid')).map(x => +x.replace('gid', ''))[0] - 1;
       });
     console.log('farms', res.data);
     store(ItemKeys.farm_info, res);
@@ -724,12 +724,12 @@ function find_production_info(cb: Function) {
   let res = new ProductionInfo();
   if (isInPage('dorf1.php')) {
     res.produce_rate = jQuery('table#production').find('td.num')
-      .map((i, e)=> {
+      .map((i, e) => {
         return str_to_int($(e).text());
       })
       .toArray();
     let stocks = $('.stock')
-      .map((i, e)=>str_to_int($(e).text()))
+      .map((i, e) => str_to_int($(e).text()))
       .toArray();
     res.warehouse_size = stocks[0];
     res.granary_size = stocks[1];
@@ -740,9 +740,9 @@ function find_production_info(cb: Function) {
       , res.granary_size
     ];
     res.amount = jQuery('#stockBar').find('.stockBarButton').find('span')
-      .map((i, e)=>str_to_int($(e).text()))
+      .map((i, e) => str_to_int($(e).text()))
       .toArray();
-    res.time_to_full = res.storage_capacity.map((cap, i)=> {
+    res.time_to_full = res.storage_capacity.map((cap, i) => {
       return (cap - res.amount[i]) / (res.produce_rate[i] ) * 3600 * 1000;
     });
     let item = new Item<ProductionInfo>();
@@ -885,7 +885,7 @@ function rub_spy_comm(cb: Function): boolean {
   const $ = jQuery;
   if (isInPage('berichte.php') && has_query('id') && !has_query('newdid')) {
     wrapLocalStorage(ItemKeys.has_switch_closest_village)(false);
-    location.replace($('table').filter((i, e)=>e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
+    location.replace($('table').filter((i, e) => e.id != 'attacker').find('.troopHeadline').find('a').last().attr('href'));
     return true;
   } else if (isInPage('position_details.php')) {
     console.log('in position details page');
@@ -894,13 +894,13 @@ function rub_spy_comm(cb: Function): boolean {
       flag(true);
       let target_xy = str_to_xy($('.titleInHeader').find('.coordinatesWrapper').text());
       let current_xy = get_current_village_xy();
-      let closest_xy = get_all_village_xy().reduce((acc, c)=> xy_to_dist(acc, target_xy) < xy_to_dist(c, target_xy) ? acc : c);
+      let closest_xy = get_all_village_xy().reduce((acc, c) => xy_to_dist(acc, target_xy) < xy_to_dist(c, target_xy) ? acc : c);
       if (!(current_xy[0] == closest_xy[0] && current_xy[1] == closest_xy[1])) {
         move_to_village_by_xy(closest_xy);
         return true;
       }
     }
-    if ($('.tabContainer').filter((i, e)=>!$(e).hasClass('hide')).find('tr').first().find('.iReport15').length == 0) {
+    if ($('.tabContainer').filter((i, e) => !$(e).hasClass('hide')).find('tr').first().find('.iReport15').length == 0) {
       localStorage.setItem(ItemKeys.user_task_name, SpyTask.name);
     }
     location.replace(jQuery('div.option').find('a').filter((i, e) => {
@@ -908,7 +908,7 @@ function rub_spy_comm(cb: Function): boolean {
       return attr && attr.includes('build.php?id=39');
     }).attr('href'));
     return true;
-  } else if (isInPage('build.php') && location.search.substring(1).split('&').filter(x=>x.includes('id=39')).length == 1) {
+  } else if (isInPage('build.php') && location.search.substring(1).split('&').filter(x => x.includes('id=39')).length == 1) {
     jQuery('div.option').find(':radio[value=4]').click();
     return false;
   }
@@ -931,8 +931,9 @@ class RubTask {
       res.total_res[1] = str_to_int($goods.find('.r2').parent().text());
       res.total_res[2] = str_to_int($goods.find('.r3').parent().text());
       res.total_res[3] = str_to_int($goods.find('.r4').parent().text());
+      res.total_res[3] = Math.min.apply(null, res.total_res); // only rub minimal rice
       res.hill = str_to_int($goods.find('.gebIcon').parent().text());
-      res.target_res = res.total_res.map(x=>Math.max(0, x - res.hill)).reduce((a, b)=>a + b);
+      res.target_res = res.total_res.map(x => Math.max(0, x - res.hill)).reduce((a, b) => a + b);
       console.log(res);
       wrapLocalStorage(RubTask.name)(res);
       rub_spy_comm(cb);
@@ -972,7 +973,7 @@ class RubTask {
       ];
 
       let res_left = res.target_res * 1.2;
-      unit_list.forEach(([name,cap])=> {
+      unit_list.forEach(([name,cap]) => {
         res_left = choose_unit(name, cap, res_left);
       });
 
@@ -984,8 +985,8 @@ class RubTask {
         console.log('all resource will be rub');
         // setTimeout(()=> $('#build').find(':submit').click());
       }
-      if (unit_list.filter(x=>assigned_cache[x[0]] > 0).length == 1) {
-        setTimeout(()=> $('#build').find(':submit').click());
+      if (unit_list.filter(x => assigned_cache[x[0]] > 0).length == 1) {
+        setTimeout(() => $('#build').find(':submit').click());
       }
 
       clear_user_task();
@@ -1053,7 +1054,7 @@ class AuctionTask {
     }
 
     let row = $('td.silver')
-      .filter(i=>i >= offset)
+      .filter(i => i >= offset)
       .filter((i, e) => {
         let amount = get_amount($(e).parent());
         let price = +($(e).text());
@@ -1073,7 +1074,7 @@ class AuctionTask {
         /* check if current price is too high */
         let target_price = max_price * get_amount(row);
         let current_price = str_to_int(row.parent().find('input.maxBid').parent().find('span').first().text());
-        let selected_idx = $('#auction').find('tbody').find('tr').toArray().map((e, i)=>[i, e]).filter(x=>$(x[1]).find('.selected').length != 0)[0][0];
+        let selected_idx = $('#auction').find('tbody').find('tr').toArray().map((e, i) => [i, e]).filter(x => $(x[1]).find('.selected').length != 0)[0][0];
         user_task_step(Math.max(selected_idx, offset) + 1);
         if (current_price <= target_price) {
           /* place order */
@@ -1117,8 +1118,8 @@ function exec_user_task(cb: Function) {
 function findTask() {
   console.log('find task');
   let xs: string[] = Object.keys(ItemKeys)
-      .filter(x=> non_expire_item_keys.indexOf(x) == -1)
-      .filter(x=> {
+      .filter(x => non_expire_item_keys.indexOf(x) == -1)
+      .filter(x => {
         return !has(x) || (
             Item.load(x).expire_date < Date.now()
           );
@@ -1158,23 +1159,23 @@ function find_build_target_farm(cb: Function) {
   console.log('find_build_target_farm');
   let buildingTasksItem = Item.load<BuildingTask[]>(ItemKeys.building_task_list, BuildingTask.prototype, true);
   let buildingTasks: BuildingTask[] = buildingTasksItem.data;
-  let farms: Farm[] = Item.load<Farm[]>(ItemKeys.farm_info).data.filter((farm: Farm)=>farm.good);
+  let farms: Farm[] = Item.load<Farm[]>(ItemKeys.farm_info).data.filter((farm: Farm) => farm.good);
   let production_info: ProductionInfo = Item.load<ProductionInfo>(ItemKeys.production_info, ProductionInfo.prototype).data;
-  let farmss: {[idx: number]: Farm[]} = groupBy(farm=>farm.farm_type, farms);
+  let farmss: {[idx: number]: Farm[]} = groupBy(farm => farm.farm_type, farms);
   let item = new Item<Farm>();
   try {
     let farm = obj_to_array(farmss)
-      .map((e: [string,Farm[]])=>[+e[0], e[1]])
-      .map((e: [number,Farm[]])=> {
+      .map((e: [string,Farm[]]) => [+e[0], e[1]])
+      .map((e: [number,Farm[]]) => {
         let farms: Farm[] = e[1];
-        return farms.reduce((acc, c)=> {
+        return farms.reduce((acc, c) => {
           if (acc.level < c.level)
             return acc;
           else
             return c;
         })
       })
-      .reduce((acc, c)=> {
+      .reduce((acc, c) => {
         if (production_info.time_to_full[acc.farm_type] < production_info.time_to_full[c.farm_type]) {
           return c;
         }
@@ -1191,7 +1192,7 @@ function find_build_target_farm(cb: Function) {
     item.data.id = -1;
     console.log('buildingTasks', buildingTasks);
     if (buildingTasks.length > 0)
-      item.expire_date = buildingTasks.reduce((acc, c)=> {
+      item.expire_date = buildingTasks.reduce((acc, c) => {
         if (acc.finishTime > c.finishTime)
           return c;
         else
@@ -1216,7 +1217,7 @@ function exec_build_target_farm(cb: Function) {
   if (farm.id == -1) {
     console.log('no available farm to upgrade ');
     resItem.expire_date = Item.load<BuildingTask[]>(ItemKeys.building_task_list).data
-      .reduce((acc, c)=> {
+      .reduce((acc, c) => {
         if (acc.finishTime > c.finishTime)
           return c;
         else
@@ -1351,15 +1352,15 @@ module api {
         console.log('break');
       }
       if (this.c) {
-        let cs = this.c.split(' ').map(x=>x.substr(1, x.length - 2));
+        let cs = this.c.split(' ').map(x => x.substr(1, x.length - 2));
         this.is_free_greenland = unsafe.array_includes(cs, 'k.fo');
         this.is_free_village = unsafe.array_includes(cs, 'k.vt');
         let e = $(new DOMParser().parseFromString(this.t, 'text/html'));
         let label = e.text();
         this.farm_bonuses = [0, 0, 0, 0];
         if (this.is_free_greenland) {
-          label.split(')')[1].split('%').filter(s=>s.length > 1)
-            .forEach(s=> {
+          label.split(')')[1].split('%').filter(s => s.length > 1)
+            .forEach(s => {
               let ss: string[] = s.split('}');
               let type = toNumber(ss[0].split('r')[1]);
               let quantity = toNumber(ss[ss.length - 1]);
@@ -1368,8 +1369,8 @@ module api {
         }
         if (this.is_free_village) {
           let regExp = /k\.f[1-9][1-9]?/;
-          let farm_class = single(cs.filter(x=>regExp.test(x)));
-          this.farms = (<string>unsafe.get(translate, farm_class)).split('-').map(x=>+x);
+          let farm_class = single(cs.filter(x => regExp.test(x)));
+          this.farms = (<string>unsafe.get(translate, farm_class)).split('-').map(x => +x);
         }
       }
     }
@@ -1404,7 +1405,7 @@ module api {
       if (res.error) {
         throw new Error(res);
       } else {
-        cb(res.data['tiles'].map((x: any)=>new Tile(x)));
+        cb(res.data['tiles'].map((x: any) => new Tile(x)));
       }
     });
     request.open("POST", "ajax.php?cmd=mapPositionData");
